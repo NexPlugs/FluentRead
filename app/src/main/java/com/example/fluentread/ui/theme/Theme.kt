@@ -32,13 +32,13 @@ private val LightColorScheme = lightColorScheme(
     primary = BlueAccent,
     secondary = BlueAccentDark,
     tertiary = SuccessGreen,
-    background = Color(0xFFFFFFFF),
-    surface = Color(0xFFF5F5F5),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F)
+    background = BackgroundDark,
+    surface = SurfaceDark,
+    onPrimary = TextPrimary,
+    onSecondary = TextPrimary,
+    onTertiary = TextPrimary,
+    onBackground = TextPrimary,
+    onSurface = TextPrimary
 )
 
 /**

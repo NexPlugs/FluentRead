@@ -18,37 +18,13 @@ import com.example.fluentread.ui.theme.FluentReadTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         enableEdgeToEdge()
+
         setContent {
             FluentReadTheme {
-                Scaffold(
-                    modifier = Modifier.fillMaxSize().background(
-                        MaterialTheme.colorScheme.background
-                    )
-                ) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+                AppNavigation()
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier,
-        style = MaterialTheme.typography.bodyLarge
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    FluentReadTheme {
-        Greeting("Android")
     }
 }
