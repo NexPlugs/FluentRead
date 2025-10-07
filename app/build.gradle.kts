@@ -56,4 +56,11 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+
+    // Google mlk
+    implementation(libs.mlkit.face.detection)
+
+    // Room
+    implementation(libs.room.runtime)
+
 }

@@ -1,4 +1,3 @@
 package com.example.fluentread.utils
 
-class Constant {
-}
+const val APP_NAME = "FluentRead"
