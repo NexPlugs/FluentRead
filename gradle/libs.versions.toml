@@ -12,7 +12,8 @@ composeBom = "2024.09.00"
 mlkit = "18.0.0"
 #room versions
 room = "2.5.2"
-navigationComposeJvmstubs = "2.9.5"
+#Navigation versions
+navigation="2.7.3"
 #voyager
 voyager = "1.0.0"
 
@@ -35,7 +36,11 @@ androidx-material3 = { group = "androidx.compose.material3", name = "material3" 
 mlkit-face-detection = { group = "com.google.mlkit", name = "face-detection", version.ref = "mlkit" }
 #room libraries
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
-androidx-navigation-compose-jvmstubs = { group = "androidx.navigation", name = "navigation-compose-jvmstubs", version.ref = "navigationComposeJvmstubs" }
+#navigation libraries
+navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation" }
+navigation-ui-ktx = { group = "androidx.navigation", name = "navigation-ui-ktx", version.ref = "navigation" }
+navigation-fragment-ktx = { group = "androidx.navigation", name = "navigation-fragment-ktx", version.ref = "navigation" }
+
 #voyager
 voyager-navigator = { group = "cafe.adriel.voyager", name = "voyager-navigator", version.ref = "voyager" }
 voyager-bottom-sheet = { group = "cafe.adriel.voyager", name = "voyager-bottom-sheet", version.ref = "voyager" }

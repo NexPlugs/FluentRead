@@ -1,6 +1,19 @@
 package com.example.fluentread.permissions
 
 import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
+import android.provider.Settings
+import android.util.Log
+import com.example.fluentread.service.accessibility.ScrollAccessibilityService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * AppPermissions is a utility class that defines constants for various permission request codes used in the application.
@@ -8,8 +21,11 @@ import android.app.Activity
  */
 class AppPermissions {
     companion object {
+        const val TAG = "AppPermissions"
+
         //Singleton instance of AppPermissions
         val INSTANCE: AppPermissions? = null
+
         fun getInstance(): AppPermissions {
             if (INSTANCE == null) {
                 return AppPermissions()
@@ -26,44 +42,162 @@ class AppPermissions {
         const val REQUEST_MULTIPLE = 0x1004
     }
 
+    private var scope: CoroutineScope? = CoroutineScope(Dispatchers.Default + SupervisorJob())
+
+    /**
+     * Reopens the application by launching the main activity.
+     * @param context The context to use for launching the activity.
+     */
+    private fun reOpenApplication(context: Context) {
+        try {
+            val packageManager = context.packageManager
+            val intent = packageManager.getLaunchIntentForPackage(context.packageName)
+            intent?.addFlags(Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY)
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Log.d(TAG, "reOpenApplication: ${e.message}")
+        }
+    }
+
+
+    private fun trackingPermissionStatus(tracking: Boolean, context: Context) {
+        if(scope == null) {
+            Log.d(TAG, "trackingPermissionStatus: scope is null")
+            return
+        }
+        scope?.launch {
+            while (!tracking) {
+                delay(1000)
+            }
+            Log.d(TAG, "trackingPermissionStatus: Permission granted")
+            reOpenApplication(context)
+        }
+    }
+
+
     /**
      * Requests accessibility permission from the user.
      */
     fun requestAccessibilityPermission(activity: Activity) {
 
+        val context = activity.applicationContext
+
+        if(isAccessibilityPermissionGranted(context)) {
+            Log.d(TAG, "requestAccessibilityPermission: Accessibility permission already granted")
+            return
+        }
+
+        // Open the accessibility settings first
+        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+            val bundle = Bundle()
+            val args = activity.packageName + "/" + ScrollAccessibilityService::class.java.name
+            bundle.putString(":settings:fragment_args_key", args)
+            putExtras(bundle)
+        }
+        try {
+            activity.startActivityForResult(intent, REQUEST_ACCESSIBILITY)
+        } catch (e: Exception) {
+            Log.d(TAG, "requestAccessibilityPermission: ${e.message}")
+            return
+        }
+
+        // Start coroutine to monitor permission status
+        trackingPermissionStatus(isAccessibilityPermissionGranted(context), context)
     }
 
     fun requestOverlayPermission(activity: Activity) {
-        // Implementation for requesting overlay permission
+        val context = activity.applicationContext
+
+        if(isOverlayPermissionGranted(context)) {
+            Log.d(TAG, "requestOverlayPermission: Overlay permission already granted")
+            return
+        }
+
+        val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
+            data = Uri.fromParts("package", activity.packageName, null)
+        }
+
+        try {
+            activity.startActivityForResult(intent, REQUEST_OVERLAY)
+        } catch (e: Exception) {
+            Log.d(TAG, "requestOverlayPermission: ${e.message}")
+            return
+        }
+
+        // Start coroutine to monitor permission status
+        trackingPermissionStatus(isOverlayPermissionGranted(context), context)
     }
 
-
+    /**
+     * Requests camera permission from the user.
+     * @param activity The activity from which the permission request is initiated.
+     */
     fun requestCameraPermission(activity: Activity) {
-        // Implementation for requesting camera permission
+        val context = activity.applicationContext
+
+        if(isCameraPermissionGranted(context)) {
+            Log.d(TAG, "requestCameraPermission: Camera permission already granted")
+            return
+        }
+
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.fromParts("package", activity.packageName, null)
+        }
+
+        try {
+            activity.startActivityForResult(intent, REQUEST_CAMERA)
+        } catch (e: Exception) {
+            Log.d(TAG, "requestCameraPermission: ${e.message}")
+            return
+        }
+
+        // Start coroutine to monitor permission status
+        trackingPermissionStatus(isCameraPermissionGranted(context), context)
     }
 
     fun requestMultiplePermissions(activity: Activity) {
         // Implementation for requesting multiple permissions
     }
 
-    fun isAccessibilityPermissionGranted(): Boolean {
-        // Implementation to check if accessibility permission is granted
-        return false
+    /**
+     * Checks if the accessibility permission is granted.
+     * @param context The context to access system settings.
+     */
+    fun isAccessibilityPermissionGranted(context: Context): Boolean {
+        val accessibilityEnabled = Settings.Secure.getInt(
+            context.contentResolver,
+           Settings.Secure.ACCESSIBILITY_ENABLED, 0
+        )
+        return accessibilityEnabled == 1
     }
 
-    fun isOverlayPermissionGranted(): Boolean {
-        // Implementation to check if overlay permission is granted
-        return false
+    /**
+     * Checks if the overlay permission is granted.
+     * @param context The context to access system settings.
+     */
+    fun isOverlayPermissionGranted(context: Context): Boolean {
+        return Settings.canDrawOverlays(context)
     }
 
-    fun isCameraPermissionGranted(): Boolean {
-        // Implementation to check if camera permission is granted
-        return false
+    /**
+     * Checks if the camera permission is granted.
+     * @param context The context to check the permission status.
+     */
+    fun isCameraPermissionGranted(context: Context): Boolean {
+        val cameraPermission = android.Manifest.permission.CAMERA
+        val permissionStatus = context.checkSelfPermission(cameraPermission)
+        return permissionStatus == android.content.pm.PackageManager.PERMISSION_GRANTED
     }
 
     fun areMultiplePermissionsGranted(): Boolean {
         // Implementation to check if multiple permissions are granted
         return false
+    }
+
+    // Clear the coroutine scope to prevent memory leaks
+    fun clear() {
+        scope?.cancel()
+        scope = null
     }
 
 }

@@ -100,5 +100,34 @@ val Typography = Typography(
         letterSpacing = 0.1.sp,
         fontStyle = FontStyle.Normal,
         color = Color.White
+    ),
+    headlineLarge = TextStyle(
+        fontFamily = montserratFontFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 32.sp,
+        lineHeight = 40.sp,
+        letterSpacing = 0.sp,
+        fontStyle = FontStyle.Normal,
+        color = Color.White
+    ),
+
+    headlineMedium = TextStyle(
+        fontFamily = montserratFontFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 28.sp,
+        lineHeight = 36.sp,
+        letterSpacing = 0.sp,
+        fontStyle = FontStyle.Normal,
+        color = Color.White
+    ),
+
+    headlineSmall = TextStyle(
+        fontFamily = montserratFontFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 24.sp,
+        lineHeight = 32.sp,
+        letterSpacing = 0.sp,
+        fontStyle = FontStyle.Normal,
+        color = Color.White
     )
 )

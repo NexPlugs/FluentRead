@@ -31,7 +31,9 @@ class ScrollAccessibilityService : AccessibilityService(), LifecycleOwner {
 
 
     //[onAccessibilityEvent] is called when an accessibility event is fired.
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        Log.d(TAG, "onAccessibilityEvent: ${event?.eventType}")
+    }
 
     //[onInterrupt] is called when the service is interrupted.
     override fun onInterrupt() {
@@ -46,7 +48,7 @@ class ScrollAccessibilityService : AccessibilityService(), LifecycleOwner {
         super.onServiceConnected()
     }
 
-    // [onCreate] is called when the service is created.
+// [onCreate] is called when the service is created.
     override fun onCreate() {
         super.onCreate()
 
