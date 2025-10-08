@@ -17,6 +17,9 @@ navigation="2.7.3"
 #voyager
 voyager = "1.0.0"
 
+#materialIcon
+materialIcon = "1.8.0"
+
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -44,6 +47,8 @@ navigation-fragment-ktx = { group = "androidx.navigation", name = "navigation-fr
 #voyager
 voyager-navigator = { group = "cafe.adriel.voyager", name = "voyager-navigator", version.ref = "voyager" }
 voyager-bottom-sheet = { group = "cafe.adriel.voyager", name = "voyager-bottom-sheet", version.ref = "voyager" }
+#materialIcon
+material-icon-extended = { group = "androidx.compose.material", name = "material-icons-extended", version.ref = "materialIcon" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

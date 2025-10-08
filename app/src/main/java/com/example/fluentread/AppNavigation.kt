@@ -9,7 +9,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
+import com.example.fluentread.features.onboarding.ENABLE_PERMISSION_ROUTE
 import com.example.fluentread.features.onboarding.ONBOARDING_ROUTE
+import com.example.fluentread.features.onboarding.enablePermissionScreen
 import com.example.fluentread.features.onboarding.onboardingScreen
 import com.example.fluentread.features.splash.SPLASH_ROUTE
 import com.example.fluentread.features.splash.splashScreen
@@ -50,6 +52,12 @@ fun AppNavHost(
                 popUpTo(SPLASH_ROUTE) { inclusive = true }
             }
         }
-        onboardingScreen(modifier) {}
+        onboardingScreen(modifier) {
+            navController.navigate(ENABLE_PERMISSION_ROUTE) {
+                popUpTo(ONBOARDING_ROUTE) { inclusive = true }
+            }
+        }
+
+        enablePermissionScreen(modifier) {}
     }
 }

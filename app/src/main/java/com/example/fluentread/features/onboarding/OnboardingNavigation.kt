@@ -7,6 +7,8 @@ import androidx.navigation.compose.composable
 
 const val ONBOARDING_ROUTE = "onboarding_route"
 
+const val ENABLE_PERMISSION_ROUTE = "enable_permission_route"
+
 /**
  * Composable function to define the navigation route for the Onboarding Screen.
  *
@@ -21,6 +23,25 @@ fun NavGraphBuilder.onboardingScreen(
         OnboardingRoute(
             modifier =  modifier,
             onNextPage = onFinishOnboarding,
+        )
+    }
+}
+
+
+/**
+ * Composable function to define the navigation route for the Enable Permission Screen.
+ *
+ * @param modifier The [Modifier] to be applied to the layout.
+ * @param onFinishEnablingPermissions Lambda to be invoked when finishing enabling permissions.
+ */
+fun NavGraphBuilder.enablePermissionScreen(
+    modifier: Modifier,
+    onFinishEnablingPermissions: () -> Unit = {}
+) {
+    composable(ENABLE_PERMISSION_ROUTE) {
+        EnablePermissionRoute(
+            modifier = modifier,
+            onNextPage = onFinishEnablingPermissions
         )
     }
 }

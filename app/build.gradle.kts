@@ -63,8 +63,10 @@ dependencies {
     //Voyager
     implementation(libs.voyager.navigator)
 
-//    //Navigation
+    //Navigation
     implementation(libs.navigation.compose)
     implementation(libs.navigation.fragment.ktx)
 
+//    //Material Icon
+//    implementation(libs.material.icon.extended)
 }
