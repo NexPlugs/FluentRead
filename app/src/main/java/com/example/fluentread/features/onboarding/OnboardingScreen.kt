@@ -1,5 +1,6 @@
 package com.example.fluentread.features.onboarding
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.fluentread.R
 import com.example.fluentread.features.components.BuildButton
+import com.example.fluentread.permissions.AppPermissions
 import com.example.fluentread.utils.INTRODUCTION_DESC
 import com.example.fluentread.utils.INTRODUCTION_TITLE
 
@@ -48,8 +50,13 @@ fun OnboardingRoute(
 @Composable
 fun OnboardingScreen(
     modifier: Modifier = Modifier,
-    onNextPage: () -> Unit = {}
+    onNextPage: () -> Unit = {},
+    appPermissions: AppPermissions = AppPermissions.getInstance()
 ) {
+    //Get current activity from LocalActivity
+    val activity = LocalActivity.current
+
+
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.Center,
@@ -88,7 +95,11 @@ fun OnboardingScreen(
                 .padding(horizontal = 16.dp, vertical = 16.dp)
                 .align(Alignment.CenterHorizontally),
             color = MaterialTheme.colorScheme.primary,
-            onPress = onNextPage,
+            onPress =  {
+                if(activity == null) return@BuildButton
+                appPermissions.requestAccessibilityPermission(activity)
+                onNextPage()
+            },
             enableWidth = false,
             height = 52.dp,
             content = {
