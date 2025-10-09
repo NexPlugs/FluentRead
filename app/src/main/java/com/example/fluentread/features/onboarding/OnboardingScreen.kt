@@ -48,7 +48,7 @@ fun OnboardingRoute(
 @Composable
 fun OnboardingScreen(
     modifier: Modifier = Modifier,
-    onNextPage: () -> Unit = {}
+    onNextPage: () -> Unit = {},
 ) {
 
 

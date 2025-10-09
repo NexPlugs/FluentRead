@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("com.google.devtools.ksp") version "2.0.21-1.0.25"
+    id("com.google.dagger.hilt.android") version "2.48"
 }
 
 android {
@@ -26,16 +28,32 @@ android {
                 "proguard-rules.pro"
             )
         }
+
+        debug {
+            isMinifyEnabled = false
+            isDebuggable = true
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     kotlinOptions {
         jvmTarget = "11"
     }
+
     buildFeatures {
         compose = true
+    }
+
+    hilt {
+        enableAggregatingTask = false
+    }
+
+    configurations.all {
+        resolutionStrategy {
+            force("com.squareup:javapoet:1.13.0")        }
     }
 }
 
@@ -49,24 +67,29 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+
+    // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
+
+    // Debug
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
     // Room
     implementation(libs.room.runtime)
 
-    //Voyager
-    implementation(libs.voyager.navigator)
-
     //Navigation
     implementation(libs.navigation.compose)
     implementation(libs.navigation.fragment.ktx)
 
-//    //Material Icon
-//    implementation(libs.material.icon.extended)
+    //Dagger hilt
+    ksp(libs.dagger.hilt.compiler)
+    implementation(libs.dagger.hilt)
+    implementation(libs.hilt.navigation.compose)
+
+    implementation("com.squareup:javapoet:1.13.0")
 }

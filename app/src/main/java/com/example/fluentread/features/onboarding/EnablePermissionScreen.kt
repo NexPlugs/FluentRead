@@ -1,6 +1,8 @@
 package com.example.fluentread.features.onboarding
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,13 +20,19 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.fluentread.features.components.BuildButton
 import com.example.fluentread.utils.PERMISSION_INTRODUCTION_DESC
 import com.example.fluentread.utils.PERMISSION_INTRODUCTION_TITLE
@@ -39,19 +47,65 @@ import com.example.fluentread.utils.PERMISSION_INTRODUCTION_TITLE
 @Composable
 fun EnablePermissionRoute(
     modifier: Modifier = Modifier,
-    onNextPage: () -> Unit = {}
+    onNextPage: () -> Unit = {},
+    onboardingViewModel: OnboardingViewModel = hiltViewModel()
 ) {
-    EnablePermissionScreen(modifier = modifier)
+    val uiState = onboardingViewModel.uiState.collectAsState().value
+
+    // Access the current context if needed
+    val context = LocalContext.current
+
+    // Access the current activity if needed
+    val activity = LocalActivity.current
+
+    // Access the current window info to check if the window is focused
+    val windowInfo = LocalWindowInfo.current
+
+    LaunchedEffect(windowInfo) {
+        snapshotFlow { windowInfo.isWindowFocused }.collect { isWindowFocused ->
+            if (isWindowFocused) {
+                onboardingViewModel.funGetPermissionGranted(context)
+            }
+        }
+    }
+
+    LaunchedEffect(true) {
+        onboardingViewModel.funGetPermissionGranted(context)
+    }
+
+    EnablePermissionScreen(
+        modifier = modifier,
+        isAccessibilityGranted = uiState.isAccessibilityGranted,
+        isCameraGranted = uiState.isCameraPermissionGranted,
+        onGrantedAccessibility = {
+            if(activity != null) {
+                onboardingViewModel.grantedAccessibility(activity)
+            }
+        },
+        onGrantedCamera = {
+            if(activity != null) {
+                onboardingViewModel.grantedCameraPermission(activity)
+            }
+        }
+    )
 }
 
 /**
  * A simple enable permission screen composable.
  *
  * @param modifier The [Modifier] to be applied to the layout.
+ * @param isAccessibilityGranted A flag indicating if the accessibility permission is granted.
+ * @param isCameraGranted A flag indicating if the camera permission is granted.
+ * @param onGrantedAccessibility The callback to be invoked when the user wants to grant accessibility permission.
+ * @param onGrantedCamera The callback to be invoked when the user wants to grant camera permission.
  */
 @Composable
 fun EnablePermissionScreen(
     modifier: Modifier = Modifier,
+    isAccessibilityGranted: Boolean = false,
+    isCameraGranted: Boolean = false,
+    onGrantedAccessibility: () -> Unit = {},
+    onGrantedCamera: () -> Unit = {},
 ) {
 
     val permissionModifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp)
@@ -83,15 +137,17 @@ fun EnablePermissionScreen(
             modifier = permissionModifier,
             title = "Accessibility",
             description = "To monitor screen content for scrolling.",
-            isEnabled = false,
-            icon = Icons.Default.Person
+            isEnabled = isAccessibilityGranted,
+            icon = Icons.Default.Person,
+            onTap = onGrantedAccessibility
         )
         PermissionField(
             modifier = permissionModifier,
             title = "Camera",
             description = "To track your eye movements.",
-            isEnabled = true,
-            icon = Icons.Default.Phone
+            isEnabled = isCameraGranted,
+            icon = Icons.Default.Phone,
+            onTap = onGrantedCamera
         )
         Spacer(modifier = Modifier.weight(1f))
         BuildButton(
@@ -132,10 +188,15 @@ private fun PermissionField(
     description: String,
     isEnabled: Boolean,
     icon: ImageVector,
+    onTap: () -> Unit = {},
 ) {
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .clickable(
+                enabled = !isEnabled,
+                onClick = onTap
+            )
             .background(
                 MaterialTheme.colorScheme.surface,
                 shape = RoundedCornerShape(12.dp)

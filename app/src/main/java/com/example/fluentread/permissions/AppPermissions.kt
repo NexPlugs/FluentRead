@@ -50,6 +50,7 @@ class AppPermissions {
      */
     private fun reOpenApplication(context: Context) {
         try {
+            Log.d(TAG, "reOpenApplication: Reopening application")
             val packageManager = context.packageManager
             val intent = packageManager.getLaunchIntentForPackage(context.packageName)
             intent?.addFlags(Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY)
@@ -60,13 +61,14 @@ class AppPermissions {
     }
 
 
-    private fun trackingPermissionStatus(tracking: Boolean, context: Context) {
+    private fun trackingPermissionStatus(tracking:() ->  Boolean, context: Context) {
         if(scope == null) {
             Log.d(TAG, "trackingPermissionStatus: scope is null")
             return
         }
         scope?.launch {
-            while (!tracking) {
+            while (!tracking.invoke()) {
+                Log.d(TAG, "trackingPermissionStatus: Permission not granted yet")
                 delay(1000)
             }
             Log.d(TAG, "trackingPermissionStatus: Permission granted")
@@ -86,6 +88,10 @@ class AppPermissions {
             Log.d(TAG, "requestAccessibilityPermission: Accessibility permission already granted")
             return
         }
+        // Start coroutine to monitor permission status
+        trackingPermissionStatus( {
+            isAccessibilityPermissionGranted(context)
+        }, context)
 
         // Open the accessibility settings first
         val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
@@ -101,8 +107,7 @@ class AppPermissions {
             return
         }
 
-        // Start coroutine to monitor permission status
-        trackingPermissionStatus(isAccessibilityPermissionGranted(context), context)
+
     }
 
     fun requestOverlayPermission(activity: Activity) {
@@ -112,6 +117,11 @@ class AppPermissions {
             Log.d(TAG, "requestOverlayPermission: Overlay permission already granted")
             return
         }
+
+        // Start coroutine to monitor permission status
+        trackingPermissionStatus({
+            isOverlayPermissionGranted(context)
+        }, context)
 
         val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
             data = Uri.fromParts("package", activity.packageName, null)
@@ -124,8 +134,6 @@ class AppPermissions {
             return
         }
 
-        // Start coroutine to monitor permission status
-        trackingPermissionStatus(isOverlayPermissionGranted(context), context)
     }
 
     /**
@@ -140,6 +148,11 @@ class AppPermissions {
             return
         }
 
+        // Start coroutine to monitor permission status
+        trackingPermissionStatus({
+            isCameraPermissionGranted(context)
+        }, context)
+
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
             data = Uri.fromParts("package", activity.packageName, null)
         }
@@ -150,9 +163,6 @@ class AppPermissions {
             Log.d(TAG, "requestCameraPermission: ${e.message}")
             return
         }
-
-        // Start coroutine to monitor permission status
-        trackingPermissionStatus(isCameraPermissionGranted(context), context)
     }
 
     fun requestMultiplePermissions(activity: Activity) {
