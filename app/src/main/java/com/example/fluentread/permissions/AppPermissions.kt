@@ -52,7 +52,9 @@ class AppPermissions {
         try {
             Log.d(TAG, "reOpenApplication: Reopening application")
             val packageManager = context.packageManager
-            val intent = packageManager.getLaunchIntentForPackage(context.packageName)
+            val packageName = context.packageName
+            Log.d(TAG, "reOpenApplication: packageName: $packageName")
+            val intent = packageManager.getLaunchIntentForPackage(packageName)
             intent?.addFlags(Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY)
             context.startActivity(intent)
         } catch (e: Exception) {
@@ -209,5 +211,4 @@ class AppPermissions {
         scope?.cancel()
         scope = null
     }
-
 }

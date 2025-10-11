@@ -86,7 +86,8 @@ fun EnablePermissionRoute(
             if(activity != null) {
                 onboardingViewModel.grantedCameraPermission(activity)
             }
-        }
+        },
+        onNextPage = onNextPage
     )
 }
 
@@ -106,6 +107,7 @@ fun EnablePermissionScreen(
     isCameraGranted: Boolean = false,
     onGrantedAccessibility: () -> Unit = {},
     onGrantedCamera: () -> Unit = {},
+    onNextPage: () -> Unit = { }
 ) {
 
     val permissionModifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp)
@@ -155,7 +157,7 @@ fun EnablePermissionScreen(
                 .padding(horizontal = 32.dp, vertical = 16.dp)
                 .align(Alignment.CenterHorizontally),
             color = MaterialTheme.colorScheme.primary,
-            onPress =  {},
+            onPress =  onNextPage,
             enableWidth = false,
             height = 52.dp,
             content = {

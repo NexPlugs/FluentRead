@@ -33,6 +33,20 @@ class ScrollAccessibilityService : AccessibilityService(), LifecycleOwner {
     //[onAccessibilityEvent] is called when an accessibility event is fired.
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         Log.d(TAG, "onAccessibilityEvent: ${event?.eventType}")
+
+//        logNodeTree(rootInActiveWindow)
+//
+//        when (event?.eventType) {
+//            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED,
+//            AccessibilityEvent.TYPE_VIEW_SCROLLED,
+//            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
+//                // Handle scroll events here
+//                scrollView(rootInActiveWindow)
+//            }
+//            else -> {
+//                // Handle other events if necessary
+//            }
+//        }
     }
 
     //[onInterrupt] is called when the service is interrupted.
@@ -40,12 +54,13 @@ class ScrollAccessibilityService : AccessibilityService(), LifecycleOwner {
         TODO("Not yet implemented") }
 
     override fun onServiceConnected() {
+        Log.d(TAG, "onServiceConnected: ScrollAccessibility Service connected")
         this.serviceInfo = this.serviceInfo.apply {
-            /**
-             * Configure the AccessibilityServiceInfo to specify the types of events and feedback
-             */
+            // Specify the types of events to listen for here
+            eventTypes = AccessibilityEvent.TYPE_VIEW_SCROLLED or
+                    AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
         }
-        super.onServiceConnected()
+        super.onServiceConnected( )
     }
 
 // [onCreate] is called when the service is created.
@@ -94,6 +109,9 @@ class ScrollAccessibilityService : AccessibilityService(), LifecycleOwner {
 
     /**
      * Logs the tree structure of the given [AccessibilityNodeInfo] for debugging purposes.
+     * @param node The root node to start logging from.
+     * @param depth The current depth in the tree, used for indentation (default is 0).
+     *
      */
     private fun logNodeTree(node: AccessibilityNodeInfo?, depth: Int = 0) {
         if (node == null) return
