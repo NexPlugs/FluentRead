@@ -2,14 +2,19 @@ package com.example.fluentread.service.camera
 
 import android.app.Service
 import android.content.Intent
+import android.graphics.ImageFormat
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraDevice
 import android.hardware.camera2.CameraManager
+import android.media.ImageReader
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
 import android.util.Log
 import com.example.fluentread.permissions.AppPermissions
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+
 
 /**
  * A foreground service that handles camera operations.
@@ -29,20 +34,72 @@ class CameraService: Service() {
     // A flag to check if the service is initialized
     private var isServiceInitialized = false
 
+    // ImageReader to handle image capture (if needed in future)
+    private var imageReader: ImageReader? = null
+
     // Instance of AppPermissions to handle permission-related tasks
     private val appPermission: AppPermissions = AppPermissions.getInstance()
 
 
     //Background thread and handler for camera operations
-    private val handler: Handler? = null
-    private val thread: HandlerThread? = null
+    private var handler: Handler? = null
+    private var thread: HandlerThread? = null
+
+    //Listener
+    var cameraServiceListener: CameraServiceListener? = null
 
     companion object {
         const val TAG = "CameraService"
+
+        // Instance of CameraService
+        var INSTANCE: CameraService? = null
+
+        fun getInstance(): CameraService {
+            if (INSTANCE == null) {
+                return CameraService()
+            }
+            return INSTANCE!!
+        }
+    }
+
+    init {
+        INSTANCE = this
     }
 
     override fun onBind(p0: Intent?): IBinder? {
         TODO("Not yet implemented")
+    }
+
+    /**
+     * Interface for listening to camera service events.
+     * Implement this interface to receive callbacks for camera events such as opening, disconnection, and errors.
+     */
+    private val _listener: MutableSharedFlow<CameraServiceListener> = MutableSharedFlow<CameraServiceListener>(replay = 0)
+
+    val listener: SharedFlow<CameraServiceListener> get() = _listener
+
+    // Expose the listener as a SharedFlow to allow external components to collect events
+    private fun emit(event: CameraServiceListener) {
+        _listener.tryEmit(event)
+    }
+
+    // Function to get the listener SharedFlow
+
+
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d(TAG, "onStartCommand: Camera Service started")
+        // If the service is not initialized, stop the service
+        if(!isServiceInitialized) {
+            Log.d(TAG, "onStartCommand: Service not initialized. Stopping service.")
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        // Open the camera
+        openCamera()
+        // If the service is killed by the system, do not recreate it
+        return START_NOT_STICKY
     }
 
     /**
@@ -63,11 +120,10 @@ class CameraService: Service() {
             cameraManager = getSystemService(CAMERA_SERVICE) as CameraManager
             cameraId = getCameraDevice()
 
-            //Add Background thread for camera operations
-            thread ?: HandlerThread(TAG).apply {
-                start()
-            }
-            handler ?: Handler(thread!!.looper)
+            startBackgroundThread()
+
+            // ----------------------------------
+            setupImageReader()
 
             Log.d(TAG, "onCreate: Camera Service created with cameraId: $cameraId")
 
@@ -76,6 +132,34 @@ class CameraService: Service() {
             Log.d(TAG, "onCreate: ${e.message}")
             isServiceInitialized = false
         }
+    }
+
+    /**
+     * Sets up the ImageReader to capture images from the camera.
+     * This method initializes the ImageReader with the desired resolution and format,
+     */
+    private fun setupImageReader() {
+        imageReader = ImageReader.newInstance(1920, 1080, ImageFormat.YUV_420_888, 2).apply {
+            setOnImageAvailableListener({ reader ->
+                reader.acquireLatestImage()?.let { image ->
+
+                    //Sink the image to the listener
+                    emit(CameraServiceListener.OnImageAvailable(image))
+                    image.close()
+                }
+            }, handler)
+        }
+    }
+
+    /**
+     * Starts a background thread and its associated handler for camera operations.
+     * This ensures that camera operations do not block the main UI thread.
+     */
+    private fun startBackgroundThread() {
+        thread ?: HandlerThread(TAG).apply {
+            start()
+        }
+        handler ?: Handler(thread!!.looper)
     }
 
     /**
@@ -113,6 +197,7 @@ class CameraService: Service() {
      * Ensures the service is initialized and the camera ID is valid before attempting to open the camera.
      */
     fun openCamera() {
+
         // If the service is not initialized or cameraId is null, log and return
         if(!isServiceInitialized) {
             Log.d(TAG, "openCamera: Service not initialized")
@@ -125,7 +210,6 @@ class CameraService: Service() {
             return
         }
 
-
         // Check if  thread is null
         if(thread == null || handler == null) {
             Log.d(TAG, "openCamera: Background thread or handler is null")
@@ -137,16 +221,19 @@ class CameraService: Service() {
                 override fun onOpened(camera: CameraDevice) {
                     Log.d(TAG, "onOpened: Camera opened successfully")
                     cameraDevice = camera
+                    emit(CameraServiceListener.OnCameraOpened)
                 }
 
                 override fun onDisconnected(camera: CameraDevice) {
                     Log.d(TAG, "onDisconnected: Camera disconnected")
                     closeCamera()
+                    emit(CameraServiceListener.OnCameraDisconnected)
                 }
 
                 override fun onError(camera: CameraDevice, error: Int) {
                     Log.d(TAG, "onError: Error opening camera - $error")
                     closeCamera()
+                    emit(CameraServiceListener.OnCameraError("Error code: $error") )
                 }
             }, handler)
         } catch (e: SecurityException) {
@@ -185,6 +272,22 @@ class CameraService: Service() {
         }
     }
 
+    /**
+     * Stops the background thread and its associated handler.
+     * This is important to free up resources and prevent memory leaks.
+     */
+    private fun stopBackgroundThread() {
+        thread?.quitSafely()
+        try {
+            thread?.join()
+        } catch (e: InterruptedException) {
+            Log.e(TAG, "stopBackgroundThread: ${e.message}", e)
+        } finally {
+            thread = null
+            handler = null
+        }
+        Log.d(TAG, "stopBackgroundThread: Background thread stopped")
+    }
 
     /**
      * Called when the service is destroyed.
@@ -197,11 +300,15 @@ class CameraService: Service() {
         cameraDevice?.close()
         cameraDevice = null
 
+        //Close ImageReader
+        imageReader?.close()
+        imageReader = null
+
+        //Remove listener
+        cameraServiceListener = null
+
         //Stop background thread
-        thread?.quitSafely()
-        Log.d(TAG, "onDestroy: Camera Service resources cleaned up")
+        stopBackgroundThread()
     }
-
-
 }
 

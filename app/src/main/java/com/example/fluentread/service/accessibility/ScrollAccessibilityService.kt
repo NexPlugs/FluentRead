@@ -33,20 +33,6 @@ class ScrollAccessibilityService : AccessibilityService(), LifecycleOwner {
     //[onAccessibilityEvent] is called when an accessibility event is fired.
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         Log.d(TAG, "onAccessibilityEvent: ${event?.eventType}")
-
-//        logNodeTree(rootInActiveWindow)
-//
-//        when (event?.eventType) {
-//            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED,
-//            AccessibilityEvent.TYPE_VIEW_SCROLLED,
-//            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
-//                // Handle scroll events here
-//                scrollView(rootInActiveWindow)
-//            }
-//            else -> {
-//                // Handle other events if necessary
-//            }
-//        }
     }
 
     //[onInterrupt] is called when the service is interrupted.
