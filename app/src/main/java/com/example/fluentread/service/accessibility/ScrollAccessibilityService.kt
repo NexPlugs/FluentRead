@@ -23,6 +23,17 @@ class ScrollAccessibilityService : AccessibilityService(), LifecycleOwner {
 
     companion object {
         const val TAG = "ScrollAccessibilityService"
+
+        //Singleton instance of ScrollAccessibilityService
+        var INSTANCE: ScrollAccessibilityService? = null
+
+        fun getInstance(): ScrollAccessibilityService? {
+            return INSTANCE
+        }
+    }
+
+    init {
+        INSTANCE = this
     }
 
     // Implementing LifecycleOwner to manage the lifecycle of the service
@@ -109,5 +120,4 @@ class ScrollAccessibilityService : AccessibilityService(), LifecycleOwner {
             logNodeTree(node.getChild(i), depth + 1)
         }
     }
-
 }

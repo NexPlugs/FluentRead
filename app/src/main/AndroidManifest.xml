@@ -46,7 +46,12 @@
         </service>
 
         <service android:name=".service.camera.CameraService"
+            android:enabled="true"
             android:exported="false"/>
+
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="face" />
 
     </application>
 

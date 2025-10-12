@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+
     id("com.google.devtools.ksp") version "2.0.21-1.0.25"
     id("com.google.dagger.hilt.android") version "2.48"
 }
@@ -18,6 +19,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        vectorDrawables {
+            useSupportLibrary = true
+        }
     }
 
     buildTypes {
@@ -68,6 +73,7 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.navigation.common.android)
+    implementation(libs.androidx.camera.core)
 
     // Testing
     testImplementation(libs.junit)
@@ -93,4 +99,10 @@ dependencies {
     implementation(libs.hilt.navigation.compose)
 
     implementation("com.squareup:javapoet:1.13.0")
+
+
+
+    //mlk
+    implementation(libs.face.detection)
+
 }
