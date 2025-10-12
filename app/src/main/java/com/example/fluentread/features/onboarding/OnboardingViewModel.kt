@@ -5,7 +5,7 @@ import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fluentread.permissions.AppPermissions
-import com.example.fluentread.service.camera.CameraService
+import com.example.fluentread.service.camera.CameraXService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -51,7 +51,7 @@ class OnboardingViewModel @Inject constructor(): ViewModel() {
 
             // Start the camera service if camera permission is granted
             if(isCameraPermissionGranted) {
-                val intent = Intent(context, CameraService::class.java)
+                val intent = Intent(context, CameraXService::class.java)
                 context.startService(intent)
             }
 

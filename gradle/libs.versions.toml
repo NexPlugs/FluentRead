@@ -22,7 +22,6 @@ squareup="1.13.0"
 navigationCommonAndroid = "2.9.5"
 
 #Camera2
-camera2 = "1.2.3"
 cameraCore = "1.5.1"
 
 
@@ -56,12 +55,15 @@ hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-com
 #squareup
 squareup-java = { group = "com.squareup", name = "javapoet", version.ref = "squareup" }
 androidx-navigation-common-android = { group = "androidx.navigation", name = "navigation-common-android", version.ref = "navigationCommonAndroid" }
-#Camera2
-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camera2" }
+#Camera
+camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "cameraCore" }
+androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "cameraCore" }
+androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "cameraCore" }
+androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "cameraCore" }
 
 #Mlk
 face-detection = { group = "com.google.mlkit", name = "face-detection", version.ref = "mlkit" }
-androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "cameraCore" }
+
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

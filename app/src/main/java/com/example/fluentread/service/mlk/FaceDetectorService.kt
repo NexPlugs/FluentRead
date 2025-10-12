@@ -1,11 +1,15 @@
 package com.example.fluentread.service.mlk
 
-import android.media.Image
 import android.util.Log
+import androidx.annotation.OptIn
+import androidx.camera.core.ExperimentalGetImage
+import androidx.camera.core.ImageProxy
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetector
 import com.google.mlkit.vision.face.FaceDetectorOptions
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 
 /**
  * A foreground service that handles face detection operations using ML Kit.
@@ -24,6 +28,8 @@ class FaceDetectorService {
             return INSTANCE
         }
 
+        const val CENTER_THRESHOLD = 10
+
     }
 
     /**
@@ -35,6 +41,14 @@ class FaceDetectorService {
 
     // A flag to check if the service is initialized
     private var isInitialized = false
+
+    private var _faceBehavior: MutableSharedFlow<FaceBehavior> = MutableSharedFlow()
+    val behavior: SharedFlow<FaceBehavior> get() = _faceBehavior
+
+    private fun emitBehavior(behavior: FaceBehavior) {
+        _faceBehavior.tryEmit(behavior)
+    }
+
 
     init {
 
@@ -54,14 +68,22 @@ class FaceDetectorService {
         isInitialized = true
     }
 
-    fun detectFace(inputImage: Image) {
+    @OptIn(ExperimentalGetImage::class)
+    fun detectFace(inputImage: ImageProxy) {
         if(!isInitialized || faceDetector == null) {
             Log.d(TAG, "detectFace: FaceDetectorService is not initialized")
             return
         }
 
+        val mediaImage = inputImage.image
+        if (mediaImage == null) {
+            Log.d(TAG, "detectFace: MediaImage is null")
+            return
+        }
+
+        Log.d(TAG, "Image info: ${inputImage.imageInfo}")
         // Convert the input image to an ML Kit InputImage
-        val image = InputImage.fromMediaImage(inputImage, 0)
+        val image = InputImage.fromMediaImage(mediaImage, inputImage.imageInfo.rotationDegrees)
 
         // Process the image using the face detector
         faceDetector?.process(image)
@@ -69,7 +91,40 @@ class FaceDetectorService {
             ?.addOnSuccessListener { faces ->
                 // Task completed successfully
                 // ...
-                Log.d(TAG, "detectFace: Faces detected: ${faces.size}")
+                if(faces.isEmpty()) {
+                    Log.d(TAG, "detectFace: No faces detected")
+                    return@addOnSuccessListener
+                }
+                val faceDetail = faces[0]
+                val angelX = faceDetail.headEulerAngleX  // Head is rotated to the right rotX degrees
+                val angelY = faceDetail.headEulerAngleY  // Head is rotated to the right rotY degrees
+
+
+                //  Determine face orientation based on Euler angles
+                when {
+                    angelX < -CENTER_THRESHOLD -> {
+                        Log.d(TAG, "detectFace: Face is looking up: $angelX")
+                        emitBehavior(FaceBehavior.UP)
+                    }
+                    angelX > CENTER_THRESHOLD -> {
+                        Log.d(TAG, "detectFace: Face is looking down: $angelX")
+                        emitBehavior(FaceBehavior.DOWN)
+                    }
+                    angelY < -CENTER_THRESHOLD -> {
+                        Log.d(TAG, "detectFace: Face is looking left: $angelY")
+                        emitBehavior(FaceBehavior.CENTER)
+                    }
+                }
+
             }
+    }
+
+    fun onDestroy() {
+        try {
+            faceDetector?.close()
+            INSTANCE = null
+        } catch (e: Exception) {
+            Log.d(TAG, "onDestroy: Error destroying FaceDetectorService: ${e.message}")
+        }
     }
 }

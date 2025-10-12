@@ -5,20 +5,15 @@ import android.content.Intent
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LifecycleRegistry
+
 
 /**
  * [ScrollAccessibilityService] is an AccessibilityService that can be used to scroll the screen.
  */
-class ScrollAccessibilityService : AccessibilityService(), LifecycleOwner {
+class ScrollAccessibilityService : AccessibilityService() {
 
     // A flag to check if the service is initialized
     private var isInitializer = false
-
-    // Lifecycle registry to manage the lifecycle of the service
-    private lateinit var lifeCycleRegistry: LifecycleRegistry
 
 
     companion object {
@@ -35,10 +30,6 @@ class ScrollAccessibilityService : AccessibilityService(), LifecycleOwner {
     init {
         INSTANCE = this
     }
-
-    // Implementing LifecycleOwner to manage the lifecycle of the service
-    override val lifecycle: Lifecycle
-        get() = lifeCycleRegistry
 
 
     //[onAccessibilityEvent] is called when an accessibility event is fired.
@@ -60,18 +51,11 @@ class ScrollAccessibilityService : AccessibilityService(), LifecycleOwner {
         super.onServiceConnected( )
     }
 
-// [onCreate] is called when the service is created.
+    // [onCreate] is called when the service is created.
     override fun onCreate() {
         super.onCreate()
 
-        try {
-            lifeCycleRegistry = LifecycleRegistry(this)
-            lifeCycleRegistry.currentState = Lifecycle.State.CREATED
-            isInitializer = true
-        } catch (e: Exception) {
-            Log.d(TAG, "ScrollAccessibility Service onCreate: ${e.message}")
-            isInitializer = false
-        }
+        isInitializer = true
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

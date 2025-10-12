@@ -4,8 +4,10 @@ import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import android.util.Log
-import com.example.fluentread.service.camera.CameraService
+import com.example.fluentread.service.accessibility.ScrollAccessibilityService
 import com.example.fluentread.service.camera.CameraServiceListener
+import com.example.fluentread.service.camera.CameraXService
+import com.example.fluentread.service.mlk.FaceBehavior
 import com.example.fluentread.service.mlk.FaceDetectorService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,8 +24,9 @@ class AppController: Service() {
     }
 
     //Initialize the service
-    private val cameraService: CameraService = CameraService.getInstance()
+    private val cameraService: CameraXService? = CameraXService.getInstance()
     private val faceDetectorService: FaceDetectorService? = FaceDetectorService.getInstance()
+    private val scrollAccessibilityService: ScrollAccessibilityService? = ScrollAccessibilityService.getInstance()
 
     // Coroutine scope for the service
     private var serviceScope: CoroutineScope? = null
@@ -34,21 +37,26 @@ class AppController: Service() {
         serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
         // Start the camera service
-        cameraService.onCreate()
+        cameraService?.onCreate()
 
         // Dummy code to start tracking
         startTracking()
 
         // Start observing camera frames
         observerCameraFrames()
+
+        // Start observing face behavior
+        observerFaceBehavior()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         return START_STICKY
     }
 
+    // Start tracking user eye movement
     fun startTracking() {
-        cameraService.openCamera()
+        Log.d(TAG, "startTracking: Starting tracking")
+        cameraService?.onStartCameraX()
     }
 
     /**
@@ -56,13 +64,39 @@ class AppController: Service() {
      */
     private fun observerCameraFrames() {
         serviceScope?.launch {
-            cameraService.listener.collect { listener ->
+            cameraService?.listener?.collect { listener ->
 
                 Log.d(TAG, "observerCameraFrames: Camera listener event: $listener")
 
                 when(listener) {
-                    is CameraServiceListener.OnImageAvailable -> {
-                        faceDetectorService?.detectFace(listener.image)
+                    is CameraServiceListener.OnImageProxy -> {
+                        faceDetectorService?.detectFace(listener.imageProxy)
+                    }
+                    else -> {}
+                }
+            }
+        }
+    }
+
+
+    /**
+     * Observer face behavior and perform actions based on detected behavior
+     */
+    private fun observerFaceBehavior() {
+        serviceScope?.launch {
+            faceDetectorService?.behavior?.collect { behavior ->
+
+                Log.d(TAG, "observerFaceBehavior: Face behavior event: $behavior")
+
+                when(behavior) {
+                    FaceBehavior.UP -> {
+                        scrollAccessibilityService?.scrollUp()
+                    }
+                    FaceBehavior.DOWN -> {
+                        scrollAccessibilityService?.scrollDown()
+                    }
+                    FaceBehavior.CENTER -> {
+                        // Do nothing
                     }
                     else -> {}
                 }
@@ -71,7 +105,8 @@ class AppController: Service() {
     }
 
     fun stopTracking() {
-        cameraService.closeCamera()
+        Log.d(TAG, "stopTracking: Stopping tracking")
+        cameraService?.onDestroy()
     }
 
 
@@ -79,8 +114,10 @@ class AppController: Service() {
         super.onDestroy()
 
         // Clean up resources
-        cameraService.onDestroy()
+        cameraService?.onDestroy()
+        faceDetectorService?.onDestroy()
 
+        // Clear the coroutine scope
         serviceScope?.cancel()
         serviceScope = null
     }
