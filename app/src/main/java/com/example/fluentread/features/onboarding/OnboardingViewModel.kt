@@ -1,9 +1,11 @@
 package com.example.fluentread.features.onboarding
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fluentread.permissions.AppPermissions
+import com.example.fluentread.service.camera.CameraService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -46,6 +48,13 @@ class OnboardingViewModel @Inject constructor(): ViewModel() {
         viewModelScope.launch {
             val isAccessibilityGranted = appPermissions.isAccessibilityPermissionGranted(context)
             val isCameraPermissionGranted = appPermissions.isCameraPermissionGranted(context)
+
+            // Start the camera service if camera permission is granted
+            if(isCameraPermissionGranted) {
+                val intent = Intent(context, CameraService::class.java)
+                context.startService(intent)
+            }
+
             _uiState.update {
                 it.copy(
                     isAccessibilityGranted = isAccessibilityGranted,

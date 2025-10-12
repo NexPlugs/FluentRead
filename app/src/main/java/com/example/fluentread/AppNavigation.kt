@@ -13,10 +13,10 @@ import com.example.fluentread.features.onboarding.ENABLE_PERMISSION_ROUTE
 import com.example.fluentread.features.onboarding.ONBOARDING_ROUTE
 import com.example.fluentread.features.onboarding.enablePermissionScreen
 import com.example.fluentread.features.onboarding.onboardingScreen
-import com.example.fluentread.features.settings.SETTING_ROUTE
 import com.example.fluentread.features.settings.settingScreen
 import com.example.fluentread.features.splash.SPLASH_ROUTE
 import com.example.fluentread.features.splash.splashScreen
+import com.example.fluentread.service.AppController
 
 /**
  * App Navigation this is the entry point for navigation
@@ -61,9 +61,12 @@ fun AppNavHost(
         }
 
         enablePermissionScreen(modifier) {
-            navController.navigate(SETTING_ROUTE) {
-                popUpTo(ENABLE_PERMISSION_ROUTE) { inclusive = true }
-            }
+//            navController.navigate(SETTING_ROUTE) {
+//                popUpTo(ENABLE_PERMISSION_ROUTE) { inclusive = true }
+//            }
+            //Start AppController Service
+            val appControllerIntent = android.content.Intent(context, AppController::class.java)
+            context.startService(appControllerIntent)
         }
 
         settingScreen(modifier)

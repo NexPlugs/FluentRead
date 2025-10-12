@@ -11,7 +11,6 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
 import android.util.Log
-import com.example.fluentread.permissions.AppPermissions
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 
@@ -37,8 +36,6 @@ class CameraService: Service() {
     // ImageReader to handle image capture (if needed in future)
     private var imageReader: ImageReader? = null
 
-    // Instance of AppPermissions to handle permission-related tasks
-    private val appPermission: AppPermissions = AppPermissions.getInstance()
 
 
     //Background thread and handler for camera operations
@@ -66,9 +63,7 @@ class CameraService: Service() {
         INSTANCE = this
     }
 
-    override fun onBind(p0: Intent?): IBinder? {
-        TODO("Not yet implemented")
-    }
+    override fun onBind(p0: Intent?): IBinder? = null
 
     /**
      * Interface for listening to camera service events.
@@ -84,7 +79,6 @@ class CameraService: Service() {
     }
 
     // Function to get the listener SharedFlow
-
 
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -109,13 +103,6 @@ class CameraService: Service() {
     override fun onCreate() {
         super.onCreate()
 
-        //Check if camera permission is granted
-        if(!appPermission.isCameraPermissionGranted(this)) {
-            Log.d(TAG, "onCreate: Camera permission not granted. Stopping service.")
-            stopSelf()
-            return
-        }
-
         try {
             cameraManager = getSystemService(CAMERA_SERVICE) as CameraManager
             cameraId = getCameraDevice()
@@ -129,8 +116,9 @@ class CameraService: Service() {
 
             isServiceInitialized = true
         } catch (e: Exception) {
-            Log.d(TAG, "onCreate: ${e.message}")
+            Log.d(TAG, "onCreateError: $e")
             isServiceInitialized = false
+            throw e
         }
     }
 
@@ -156,10 +144,10 @@ class CameraService: Service() {
      * This ensures that camera operations do not block the main UI thread.
      */
     private fun startBackgroundThread() {
-        thread ?: HandlerThread(TAG).apply {
-            start()
+        thread = HandlerThread(TAG).also {
+            it.start()
+            handler = Handler(it.looper)
         }
-        handler ?: Handler(thread!!.looper)
     }
 
     /**
@@ -243,7 +231,11 @@ class CameraService: Service() {
         }
     }
 
-    private fun closeCamera() {
+    /**
+     * Closes the currently opened camera.
+     * This method releases the camera resources and sets the cameraDevice to null.
+     */
+    fun closeCamera() {
         cameraDevice?.close()
         cameraDevice = null
     }
@@ -297,8 +289,7 @@ class CameraService: Service() {
         super.onDestroy()
         Log.d(TAG, "onDestroy: Camera Service destroyed")
         //Turn off camera if it's on
-        cameraDevice?.close()
-        cameraDevice = null
+        closeCamera()
 
         //Close ImageReader
         imageReader?.close()

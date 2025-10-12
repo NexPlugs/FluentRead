@@ -3,6 +3,7 @@ package com.example.fluentread.permissions
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
@@ -198,7 +199,7 @@ class AppPermissions {
     fun isCameraPermissionGranted(context: Context): Boolean {
         val cameraPermission = android.Manifest.permission.CAMERA
         val permissionStatus = context.checkSelfPermission(cameraPermission)
-        return permissionStatus == android.content.pm.PackageManager.PERMISSION_GRANTED
+        return permissionStatus == PackageManager.PERMISSION_GRANTED
     }
 
     fun areMultiplePermissionsGranted(): Boolean {
