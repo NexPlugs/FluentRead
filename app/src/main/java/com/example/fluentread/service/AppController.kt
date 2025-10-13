@@ -1,5 +1,6 @@
 package com.example.fluentread.service
 
+import android.annotation.SuppressLint
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
@@ -9,6 +10,7 @@ import com.example.fluentread.service.camera.CameraServiceListener
 import com.example.fluentread.service.camera.CameraXService
 import com.example.fluentread.service.mlk.FaceBehavior
 import com.example.fluentread.service.mlk.FaceDetectorService
+import com.example.fluentread.service.notification.NotificationHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -21,12 +23,16 @@ class AppController: Service() {
 
     companion object {
         const val TAG = "AppController"
+
+        const val NOTIFICATION_ID = 0x2001
     }
 
     //Initialize the service
-    private val cameraService: CameraXService? = CameraXService.getInstance()
-    private val faceDetectorService: FaceDetectorService? = FaceDetectorService.getInstance()
     private val scrollAccessibilityService: ScrollAccessibilityService? = ScrollAccessibilityService.getInstance()
+
+    private val notificationHelper: NotificationHelper = NotificationHelper(
+        this, TAG, "App Controller Service",
+    )
 
     // Coroutine scope for the service
     private var serviceScope: CoroutineScope? = null
@@ -37,7 +43,7 @@ class AppController: Service() {
         serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
         // Start the camera service
-        cameraService?.onCreate()
+        CameraXService.onCreate(this)
 
         // Dummy code to start tracking
         startTracking()
@@ -50,13 +56,33 @@ class AppController: Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+
+        startNotificationForeground()
+
         return START_STICKY
     }
 
     // Start tracking user eye movement
     fun startTracking() {
         Log.d(TAG, "startTracking: Starting tracking")
-        cameraService?.onStartCameraX()
+        CameraXService.onStartCameraX(this)
+    }
+
+    /**
+     * Start the service in the foreground with a notification
+     * This is important to keep the service running in the background
+     */
+    @SuppressLint("ForegroundServiceType")
+    private fun startNotificationForeground() {
+
+        Log.d(TAG, "Start notification foreground")
+        try{
+            val notificationBuilder = notificationHelper.initNotificationBuilder()
+            notificationHelper.createNotificationChannel()
+            startForeground(NOTIFICATION_ID, notificationBuilder.build())
+        } catch (e: Exception) {
+            Log.d(TAG, "startNotificationForeground: ${e.message}")
+        }
     }
 
     /**
@@ -64,13 +90,13 @@ class AppController: Service() {
      */
     private fun observerCameraFrames() {
         serviceScope?.launch {
-            cameraService?.listener?.collect { listener ->
+            CameraXService.listener.collect { listener ->
 
                 Log.d(TAG, "observerCameraFrames: Camera listener event: $listener")
 
                 when(listener) {
                     is CameraServiceListener.OnImageProxy -> {
-                        faceDetectorService?.detectFace(listener.imageProxy)
+                        FaceDetectorService.detectFace(listener.imageProxy)
                     }
                     else -> {}
                 }
@@ -84,8 +110,7 @@ class AppController: Service() {
      */
     private fun observerFaceBehavior() {
         serviceScope?.launch {
-            faceDetectorService?.behavior?.collect { behavior ->
-
+            FaceDetectorService.behavior.collect { behavior ->
                 Log.d(TAG, "observerFaceBehavior: Face behavior event: $behavior")
 
                 when(behavior) {
@@ -106,7 +131,7 @@ class AppController: Service() {
 
     fun stopTracking() {
         Log.d(TAG, "stopTracking: Stopping tracking")
-        cameraService?.onDestroy()
+        CameraXService.onDestroy()
     }
 
 
@@ -114,8 +139,8 @@ class AppController: Service() {
         super.onDestroy()
 
         // Clean up resources
-        cameraService?.onDestroy()
-        faceDetectorService?.onDestroy()
+        CameraXService.onDestroy()
+        FaceDetectorService.onDestroy()
 
         // Clear the coroutine scope
         serviceScope?.cancel()

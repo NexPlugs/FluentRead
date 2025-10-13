@@ -55,7 +55,7 @@ fun SplashScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         BuildAppLoading(
-            imageRes = com.example.fluentread.R.drawable.ic_launcher_foreground,
+            imageRes = com.example.fluentread.R.drawable.app_icon,
             sizeDp = 100.dp,
             animationType = AnimationType.SCALE
         )

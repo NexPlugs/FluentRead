@@ -6,6 +6,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
@@ -61,12 +62,8 @@ fun AppNavHost(
         }
 
         enablePermissionScreen(modifier) {
-//            navController.navigate(SETTING_ROUTE) {
-//                popUpTo(ENABLE_PERMISSION_ROUTE) { inclusive = true }
-//            }
-            //Start AppController Service
             val appControllerIntent = android.content.Intent(context, AppController::class.java)
-            context.startService(appControllerIntent)
+            ContextCompat.startForegroundService(context, appControllerIntent)
         }
 
         settingScreen(modifier)

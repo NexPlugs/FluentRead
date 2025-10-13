@@ -6,7 +6,11 @@
         android:name="android.hardware.camera"
         android:required="true" />
 
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.CAMERA"/>
+
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
 
     <application
@@ -45,12 +49,10 @@
                 android:resource="@xml/accessibility_service_config" />
         </service>
 
-        <service android:name=".service.camera.CameraXService"
-            android:enabled="true"
-            android:exported="false"/>
 
         <service android:name=".service.AppController"
             android:enabled="true"
+            android:foregroundServiceType="specialUse"
             android:exported="false"/>
 
         <meta-data
