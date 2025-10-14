@@ -65,10 +65,26 @@ class ScrollAccessibilityService : AccessibilityService() {
     // Define scrolling methods here
     fun scrollUp() {
         // Implement scroll up logic
+        val rootNode = rootInActiveWindow
+        logNodeTree(rootNode)
+        if (rootNode != null) {
+            val success = scrollView(rootNode, isForward = false)
+            Log.d(TAG, "scrollUp: Scroll action performed: $success")
+        } else {
+            Log.d(TAG, "scrollUp: Root node is null")
+        }
     }
 
     fun scrollDown() {
         // Implement scroll down logic
+        val rootNode = rootInActiveWindow
+        logNodeTree(rootNode)
+        if (rootNode != null) {
+            val success = scrollView(rootNode, isForward = true)
+            Log.d(TAG, "scrollDown: Scroll action performed: $success")
+        } else {
+            Log.d(TAG, "scrollDown: Root node is null")
+        }
     }
 
     override fun onDestroy() {
@@ -79,13 +95,18 @@ class ScrollAccessibilityService : AccessibilityService() {
     /**
      *  Scrolls the view represented by the given [AccessibilityNodeInfo].
      */
-    private fun scrollView(node: AccessibilityNodeInfo?): Boolean {
+    private fun scrollView(node: AccessibilityNodeInfo?, isForward: Boolean): Boolean {
         if(node == null) return false
 
         if(node.isScrollable) {
             return false
         }
-        return node.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
+        val action = if (isForward) {
+            AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
+        } else {
+            AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
+        }
+        return node.performAction(action)
     }
 
     /**

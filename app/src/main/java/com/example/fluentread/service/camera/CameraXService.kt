@@ -90,6 +90,8 @@ object CameraXService : LifecycleOwner {
             isCameraRunning = false
         }
     }
+
+
     /**
      * Bind the camera use case to the lifecycle
      * - Uses the front camera by default
@@ -166,8 +168,25 @@ object CameraXService : LifecycleOwner {
      * - Closes the ImageProxy after processing
      */
     private class FaceAnalyzer : ImageAnalysis.Analyzer {
+        val LIMIT_BUFFER_MS = 100L
+
+        private var lastEmitTime = 0L
+
+
+
+        init {
+            //Count down every second
+            CoroutineScope(Dispatchers.Default).launch {
+                while (true) {
+                    delay(LIMIT_BUFFER_MS)
+                    lastEmitTime = 0L
+                }
+            }
+        }
+
         @ExperimentalGetImage
         override fun analyze(proxy: ImageProxy) {
+            Log.d(TAG, "analyze: Analyzing image: ${proxy.imageInfo}")
             try {
                 val image = proxy.image
                 if (image != null) {
@@ -187,8 +206,10 @@ object CameraXService : LifecycleOwner {
         Log.d(TAG, "onDestroy: Destroying CameraXService")
 
         try {
+            // Shutdown the camera executor and unbind all use cases
             cameraExecutor?.shutdown()
             cameraProvider?.unbindAll()
+
             lifeCycleRegistry.currentState = Lifecycle.State.DESTROYED
             isCameraInitialized = false
             isCameraRunning = false

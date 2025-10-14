@@ -17,6 +17,12 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
+/**
+ * AppController is a foreground service that manages camera input, processes face detection,
+ * and controls scrolling behavior based on face movements.
+ * It initializes and coordinates between CameraXService for camera operations
+ * and FaceDetectorService for processing the camera frames.
+ */
 class AppController: Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
