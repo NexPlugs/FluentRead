@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
  * and controls scrolling behavior based on face movements.
  * It initializes and coordinates between CameraXService for camera operations
  * and FaceDetectorService for processing the camera frames.
+ * And control toggle scrolling via ScrollAccessibilityService.
  */
 class AppController: Service() {
 

@@ -31,7 +31,6 @@ class ScrollAccessibilityService : AccessibilityService() {
         INSTANCE = this
     }
 
-
     //[onAccessibilityEvent] is called when an accessibility event is fired.
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         Log.d(TAG, "onAccessibilityEvent: ${event?.eventType}")
