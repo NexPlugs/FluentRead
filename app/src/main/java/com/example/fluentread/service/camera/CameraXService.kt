@@ -51,7 +51,6 @@ object CameraXService : LifecycleOwner {
         try {
             lifeCycleRegistry.currentState = Lifecycle.State.CREATED
             cameraExecutor = Executors.newSingleThreadExecutor()
-            onStartCameraX(context)
             isCameraInitialized = true
         } catch (e: Exception) {
             Log.d(TAG, "onCreate: Error initializing CameraX: ${e.message}")

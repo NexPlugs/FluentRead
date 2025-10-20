@@ -63,7 +63,7 @@ class AppController : Service() {
             throw SecurityException("Overlay permission not granted")
         }
 
-        CameraXService.onCreate(this)
+        CameraXService.onCreate(this.applicationContext)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -86,14 +86,13 @@ class AppController : Service() {
         Log.d(ToggleService.TAG, "createToggle: Creating toggle bubble")
 
         toggleView = ToggleView(context = this, startPoint = Point(0, 200))
+
         toggleView?.rootGroup?.addView(
             ImageView(this).apply {
                 setImageDrawable(ContextCompat.getDrawable(context, R.drawable.app_icon)).apply {
                     layoutParams = ViewGroup.LayoutParams(100, 100)
-                    setOnClickListener {
-                        scrollAccessibilityService?.scrollDown()
-                    }
                 }
+                setOnClickListener { startTracking() }
             }
         )
     }
