@@ -187,7 +187,7 @@ object CameraXService : LifecycleOwner {
     }
 
     fun onDestroy() {
-        Log.d(TAG, "onDestroy: Destroying CameraXS/ervice")
+        Log.d(TAG, "onDestroy: Destroying CameraXService")
 
         try {
             // Shutdown the camera executor and unbind all use cases

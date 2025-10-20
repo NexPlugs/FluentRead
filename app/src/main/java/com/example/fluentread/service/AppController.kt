@@ -99,7 +99,7 @@ class AppController : Service() {
 
     private fun stopTracking() {
         Log.d(TAG, "stopTracking: Stopping face tracking.")
-        CameraXService.onDestroy()
+        CameraXService.onStopCameraX()
         _data.value = _data.value.copy(cameraIsRunning = false)
     }
     // endregion
