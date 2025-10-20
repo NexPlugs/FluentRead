@@ -103,12 +103,12 @@ object FaceDetectorService {
                         //  Determine face orientation based on Euler angles
                         when {
                             angelX < -CENTER_THRESHOLD -> {
-                                Log.d(TAG, "detectFace: Face is looking up: $angelX")
-                                emitBehavior(FaceBehavior.UP)
-                            }
-                            angelX > CENTER_THRESHOLD -> {
                                 Log.d(TAG, "detectFace: Face is looking down: $angelX")
                                 emitBehavior(FaceBehavior.DOWN)
+                            }
+                            angelX > CENTER_THRESHOLD -> {
+                                Log.d(TAG, "detectFace: Face is looking up: $angelX")
+                                emitBehavior(FaceBehavior.UP)
                             }
                             angelY < -CENTER_THRESHOLD -> {
                                 Log.d(TAG, "detectFace: Face is looking left: $angelY")

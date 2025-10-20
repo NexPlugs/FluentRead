@@ -167,21 +167,6 @@ object CameraXService : LifecycleOwner {
      * - Closes the ImageProxy after processing
      */
     private class FaceAnalyzer : ImageAnalysis.Analyzer {
-//        val LIMIT_BUFFER_MS = 100L
-//
-//        private var lastEmitTime = 0L
-//
-//
-//
-//        init {
-//            //Count down every second
-//            CoroutineScope(Dispatchers.Default).launch {
-//                while (true) {
-//                    delay(LIMIT_BUFFER_MS)
-//                    lastEmitTime = 0L
-//                }
-//            }
-//        }
 
         @ExperimentalGetImage
         override fun analyze(proxy: ImageProxy) {

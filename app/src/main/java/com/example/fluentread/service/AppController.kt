@@ -17,172 +17,165 @@ import com.example.fluentread.service.camera.CameraXService
 import com.example.fluentread.service.mlk.FaceBehavior
 import com.example.fluentread.service.mlk.FaceDetectorService
 import com.example.fluentread.service.notification.NotificationHelper
-import com.example.fluentread.service.overlay.ToggleService
 import com.example.fluentread.service.overlay.ToggleView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 /**
- * AppController is a foreground service that manages camera input, processes face detection,
- * and controls scrolling behavior based on face movements.
- * It initializes and coordinates between CameraXService for camera operations
- * and FaceDetectorService for processing the camera frames.
- * And control toggle scrolling via ScrollAccessibilityService.
+ * Foreground service that coordinates:
+ * - CameraX for frame capture
+ * - ML Kit for face detection
+ * - Accessibility for auto-scrolling based on user’s gaze
+ * - ToggleView overlay for user control
  */
 class AppController : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    // Toggle view for overlay control
-    private var toggleView: ToggleView? = null
-
     companion object {
-        const val TAG = "AppController"
-        const val NOTIFICATION_ID = 0x2001
+        private const val TAG = "AppController"
+        private const val NOTIFICATION_ID = 0x2001
     }
 
-    // Initialize the service
-    private val scrollAccessibilityService: ScrollAccessibilityService? = ScrollAccessibilityService.getInstance()
+    // State flow for shared app data
+    private val _data = MutableStateFlow(AppData())
+    val data: StateFlow<AppData> get() = _data
 
-    private val notificationHelper: NotificationHelper = NotificationHelper(
-        this, TAG, "App Controller Service"
-    )
+    // Dependencies
+    private val notificationHelper by lazy {
+        NotificationHelper(this, TAG, "App Controller Service")
+    }
 
-    // Coroutine scope for the service
-    private var serviceScope: CoroutineScope? = null
+    private val scrollAccessibilityService: ScrollAccessibilityService? by lazy {
+        ScrollAccessibilityService.getInstance()
+    }
 
+    // Coroutine scope for service
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    // UI Overlay
+    private var toggleView: ToggleView? = null
+
+    // region === Lifecycle ===
     override fun onCreate() {
         super.onCreate()
-        serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-        // Start the camera service
-
-        if (!Settings.canDrawOverlays(this)) {
-            throw SecurityException("Overlay permission not granted")
-        }
-
-        CameraXService.onCreate(this.applicationContext)
+        ensureOverlayPermission()
+        CameraXService.onCreate(applicationContext)
+        Log.d(TAG, "Service created.")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startNotificationForeground()
-
         if (Settings.canDrawOverlays(this)) {
-            createToggle()
+            if (toggleView == null) createToggle()
             toggleView?.show()
         } else {
-            throw SecurityException("Overlay permission not granted")
+            Log.w(TAG, "Overlay permission not granted; stopping service.")
+            stopSelf()
         }
         return START_STICKY
     }
 
-    /**
-     * Create the toggle bubble
-     * This function initializes the ToggleView and adds an ImageView as its content.
-     */
-    private fun createToggle() {
-        Log.d(ToggleService.TAG, "createToggle: Creating toggle bubble")
-
-        toggleView = ToggleView(context = this, startPoint = Point(0, 200))
-
-        toggleView?.rootGroup?.addView(
-            ImageView(this).apply {
-                setImageDrawable(ContextCompat.getDrawable(context, R.drawable.app_icon)).apply {
-                    layoutParams = ViewGroup.LayoutParams(100, 100)
-                }
-                setOnClickListener { startTracking() }
-            }
-        )
+    override fun onDestroy() {
+        Log.d(TAG, "Service destroyed.")
+        cleanupResources()
+        super.onDestroy()
     }
+    // endregion
 
-    // Start tracking user eye movement
-    fun startTracking() {
-        Log.d(TAG, "startTracking: Starting tracking")
-
-        // Initialize CameraX service
+    // region === Tracking Control ===
+    private fun startTracking() {
+        Log.d(TAG, "startTracking: Starting face tracking.")
         CameraXService.onStartCameraX(this)
-
-        // Start observing camera frames
-        observerCameraFrames()
-
-        // Start observing face behavior
-        observerFaceBehavior()
+        observeCameraFrames()
+        observeFaceBehavior()
+        _data.value = _data.value.copy(cameraIsRunning = true)
     }
 
-    /**
-     * Start the service in the foreground with a notification
-     * This is important to keep the service running in the background
-     */
+    private fun stopTracking() {
+        Log.d(TAG, "stopTracking: Stopping face tracking.")
+        CameraXService.onDestroy()
+        _data.value = _data.value.copy(cameraIsRunning = false)
+    }
+    // endregion
+
+    // region === Observers ===
+    private fun observeCameraFrames() {
+        serviceScope.launch {
+            CameraXService.listener.collect { event ->
+                when (event) {
+                    is CameraServiceListener.OnImageProxy -> FaceDetectorService.detectFace(event.imageProxy)
+                    else -> Unit
+                }
+            }
+        }
+    }
+
+    private fun observeFaceBehavior() {
+        serviceScope.launch {
+            FaceDetectorService.behavior.collect { behavior ->
+                when (behavior) {
+                    FaceBehavior.UP -> scrollAccessibilityService?.scrollUp()
+                    FaceBehavior.DOWN -> scrollAccessibilityService?.scrollDown()
+                    FaceBehavior.CENTER -> Unit
+                    else -> {
+                        Log.w(TAG, "observeFaceBehavior: Unknown behavior: $behavior")
+                    }
+                }
+            }
+        }
+    }
+    // endregion
+
+    // region === Overlay ===
+    private fun createToggle() {
+        Log.d(TAG, "createToggle: Creating toggle bubble.")
+        toggleView = ToggleView(context = this, startPoint = Point(0, 200)).apply {
+            rootGroup?.addView(createToggleButton())
+        }
+    }
+
+    // Create the toggle button view
+    private fun createToggleButton(): ImageView = ImageView(this).apply {
+        setImageDrawable(ContextCompat.getDrawable(context, R.drawable.app_icon))
+        layoutParams = ViewGroup.LayoutParams(100, 100)
+        setOnClickListener {
+            if (_data.value.cameraIsRunning) stopTracking() else startTracking()
+        }
+    }
+    // endregion
+
+    // region === Notification ===
     @SuppressLint("ForegroundServiceType")
     private fun startNotificationForeground() {
-        Log.d(TAG, "Start notification foreground")
         try {
-            val notificationBuilder = notificationHelper.initNotificationBuilder()
+            val builder = notificationHelper.initNotificationBuilder()
             notificationHelper.createNotificationChannel()
-            startForeground(NOTIFICATION_ID, notificationBuilder.build())
+            startForeground(NOTIFICATION_ID, builder.build())
         } catch (e: Exception) {
-            Log.d(TAG, "startNotificationForeground: ${e.message}")
+            Log.e(TAG, "Failed to start foreground notification: ${e.message}", e)
+        }
+    }
+    // endregion
+
+    // region === Helpers ===
+    private fun ensureOverlayPermission() {
+        if (!Settings.canDrawOverlays(this)) {
+            throw SecurityException("Overlay permission not granted.")
         }
     }
 
-    /**
-     * Observer camera frames and process them for face detection
-     */
-    private fun observerCameraFrames() {
-        serviceScope?.launch {
-            CameraXService.listener.collect { listener ->
-                Log.d(TAG, "observerCameraFrames: Camera listener event: $listener")
-                when (listener) {
-                    is CameraServiceListener.OnImageProxy -> {
-                        FaceDetectorService.detectFace(listener.imageProxy)
-                    }
-                    else -> {}
-                }
-            }
-        }
-    }
-
-    /**
-     * Observer face behavior and perform actions based on detected behavior
-     */
-    private fun observerFaceBehavior() {
-        serviceScope?.launch {
-            FaceDetectorService.behavior.collect { behavior ->
-                Log.d(TAG, "observerFaceBehavior: Face behavior event: $behavior")
-                when (behavior) {
-                    FaceBehavior.UP -> {
-                        scrollAccessibilityService?.scrollUp()
-                    }
-                    FaceBehavior.DOWN -> {
-                        scrollAccessibilityService?.scrollDown()
-                    }
-                    FaceBehavior.CENTER -> {
-                        // Do nothing
-                    }
-                    else -> {}
-                }
-            }
-        }
-    }
-
-    fun stopTracking() {
-        Log.d(TAG, "stopTracking: Stopping tracking")
-        CameraXService.onDestroy()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        // Clean up resources
-        CameraXService.onDestroy()
-        FaceDetectorService.onDestroy()
-        // Clear the coroutine scope
-        serviceScope?.cancel()
-        serviceScope = null
-
-        // Destroy toggle view
+    private fun cleanupResources() {
+        serviceScope.cancel()
         toggleView?.remove()
         toggleView = null
+        CameraXService.onDestroy()
+        FaceDetectorService.onDestroy()
     }
+    // endregion
 }
