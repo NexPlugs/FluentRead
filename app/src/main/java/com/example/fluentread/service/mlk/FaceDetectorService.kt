@@ -94,27 +94,26 @@ object FaceDetectorService {
                 ?.addOnSuccessListener { faces ->
                     // Task completed successfully
                     // ...
-                    if(faces.isEmpty()) {
-                        Log.d(TAG, "detectFace: No faces detected")
-                        return@addOnSuccessListener
-                    }
-                    val faceDetail = faces[0]
-                    val angelX = faceDetail.headEulerAngleX  // Head is rotated to the right rotX degrees
-                    val angelY = faceDetail.headEulerAngleY  // Head is rotated to the right rotY degrees
+                    if(faces.isNotEmpty()) {
+                        Log.d(TAG, "detectFace: Detected ${faces.size} faces")
+                        val faceDetail = faces[0]
+                        val angelX = faceDetail.headEulerAngleX  // Head is rotated to the right rotX degrees
+                        val angelY = faceDetail.headEulerAngleY  // Head is rotated to the right rotY degrees
 
-                    //  Determine face orientation based on Euler angles
-                    when {
-                        angelX < -CENTER_THRESHOLD -> {
-                            Log.d(TAG, "detectFace: Face is looking up: $angelX")
-                            emitBehavior(FaceBehavior.UP)
-                        }
-                        angelX > CENTER_THRESHOLD -> {
-                            Log.d(TAG, "detectFace: Face is looking down: $angelX")
-                            emitBehavior(FaceBehavior.DOWN)
-                        }
-                        angelY < -CENTER_THRESHOLD -> {
-                            Log.d(TAG, "detectFace: Face is looking left: $angelY")
-                            emitBehavior(FaceBehavior.CENTER)
+                        //  Determine face orientation based on Euler angles
+                        when {
+                            angelX < -CENTER_THRESHOLD -> {
+                                Log.d(TAG, "detectFace: Face is looking up: $angelX")
+                                emitBehavior(FaceBehavior.UP)
+                            }
+                            angelX > CENTER_THRESHOLD -> {
+                                Log.d(TAG, "detectFace: Face is looking down: $angelX")
+                                emitBehavior(FaceBehavior.DOWN)
+                            }
+                            angelY < -CENTER_THRESHOLD -> {
+                                Log.d(TAG, "detectFace: Face is looking left: $angelY")
+                                emitBehavior(FaceBehavior.CENTER)
+                            }
                         }
                     }
                     inputImage.close()
