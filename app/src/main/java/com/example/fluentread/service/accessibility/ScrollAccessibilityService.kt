@@ -7,54 +7,48 @@ import android.graphics.Path
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
-import kotlinx.coroutines.flow.Flow
-
+import com.example.fluentread.utils.launchWithMutex
+import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * [ScrollAccessibilityService] is an AccessibilityService that can be used to scroll the screen.
  */
 class ScrollAccessibilityService : AccessibilityService() {
 
-    // A flag to check if the service is initialized
     private var isInitializer = false
 
+    // Mutex to ensure only one scroll action runs at a time
+    private val scrollMutex = Mutex()
+
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     companion object {
         const val TAG = "ScrollAccessibilityService"
 
-        //Singleton instance of ScrollAccessibilityService
         var INSTANCE: ScrollAccessibilityService? = null
 
-        fun getInstance(): ScrollAccessibilityService? {
-            return INSTANCE
-        }
+        fun getInstance(): ScrollAccessibilityService? = INSTANCE
     }
 
     init {
         INSTANCE = this
     }
 
-    //[onAccessibilityEvent] is called when an accessibility event is fired.
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) { }
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
 
-    //[onInterrupt] is called when the service is interrupted.
     override fun onInterrupt() {
-        TODO("Not yet implemented") }
+        Log.d(TAG, "Service interrupted")
+    }
 
     override fun onServiceConnected() {
         Log.d(TAG, "onServiceConnected: ScrollAccessibility Service connected")
-//        this.serviceInfo = this.serviceInfo.apply {
-//            // Specify the types of events to listen for here
-//            eventTypes = AccessibilityEvent.TYPE_VIEW_SCROLLED or
-//                    AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
-//        }
-        super.onServiceConnected( )
+        super.onServiceConnected()
     }
 
-    // [onCreate] is called when the service is created.
     override fun onCreate() {
         super.onCreate()
-
         isInitializer = true
     }
 
@@ -62,138 +56,125 @@ class ScrollAccessibilityService : AccessibilityService() {
         return super.onStartCommand(intent, flags, startId)
     }
 
-    // Define scrolling methods here
+    /**
+     * Scrolls up using Mutex to prevent concurrent scrolling.
+     */
     fun scrollUp() {
-        // Implement scroll up logic
-        val rootNode = rootInActiveWindow
-        if (rootNode != null) {
-            val success = scrollView(isForward = false)
-            Log.d(TAG, "scrollUp: Scroll action performed: $success")
-        } else {
-            Log.d(TAG, "scrollUp: Root node is null")
+        serviceScope.launchWithMutex(scrollMutex) {
+            performSafeScroll(isForward = false)
         }
     }
 
+    /**
+     * Scrolls down using Mutex to prevent concurrent scrolling.
+     */
     fun scrollDown() {
-        // Implement scroll down logic
-        val rootNode = rootInActiveWindow
-        if (rootNode != null) {
-            val success = scrollView(isForward = true)
-            Log.d(TAG, "scrollDown: Scroll action performed: $success")
-        } else {
-            Log.d(TAG, "scrollDown: Root node is null")
+        serviceScope.launchWithMutex(scrollMutex) {
+            performSafeScroll(isForward = true)
         }
     }
 
-    fun canScroll() : Boolean {
-        //TODO: Implement can scroll logic
-        return  true
+    private suspend fun performSafeScroll(isForward: Boolean) = withContext(Dispatchers.Default) {
+        val rootNode = rootInActiveWindow
+        if (rootNode != null) {
+            val success = scrollView(isForward)
+            Log.d(TAG, "performSafeScroll(${if (isForward) "Down" else "Up"}): Scroll action performed: $success")
+        } else {
+            Log.d(TAG, "performSafeScroll: Root node is null")
+        }
     }
+
+    fun canScroll(): Boolean = true
 
     override fun onDestroy() {
+        serviceScope.cancel()
         super.onDestroy()
     }
 
     /**
-     *  Scrolls the view represented by the given [AccessibilityNodeInfo].
+     * Scrolls the view represented by the given [AccessibilityNodeInfo].
      */
-    private fun scrollView(isForward: Boolean) {
-        val root = rootInActiveWindow ?: return
+    private fun scrollView(isForward: Boolean): Boolean {
+        val root = rootInActiveWindow ?: return false
         val scrollNode = findScrollNode(root)
 
-        val action = if( isForward)
+        val action = if (isForward)
             AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
-        else AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
+        else
+            AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
 
-        if(scrollNode == null) {
-            Log.d(TAG, "Can not find scroll node")
+        if (scrollNode == null) {
+            Log.d(TAG, "Cannot find scroll node — performing gesture fallback")
             performScrollDown(isForward)
             root.recycle()
-            return
+            return false
         }
 
-        scrollNode.performAction(action)
+        val success = scrollNode.performAction(action)
         scrollNode.recycle()
+        return success
     }
 
     /**
-     * Performs a scroll down gesture on the screen.
-     * Using path to define the gesture from bottom to top.
+     * Performs a scroll gesture on the screen (used as fallback).
      */
     private fun performScrollDown(isForward: Boolean) {
         val displayMetrics = resources.displayMetrics
         val startX = displayMetrics.widthPixels / 2f
-        val startY = if(isForward) displayMetrics.heightPixels * 0.2f else displayMetrics.heightPixels * 0.8f
+        val startY =
+            if (isForward) displayMetrics.heightPixels * 0.8f else displayMetrics.heightPixels * 0.2f
+        val endY =
+            if (isForward) displayMetrics.heightPixels * 0.2f else displayMetrics.heightPixels * 0.8f
 
-        val endX = startX
-        val endY = if(isForward) displayMetrics.heightPixels * 0.8f else displayMetrics.heightPixels * 0.2f
-
-        // Create a behavior action by using Path()
         val path = Path().apply {
             moveTo(startX, startY)
-            lineTo(endX, endY)
+            lineTo(startX, endY)
         }
 
         val gesture = GestureDescription.Builder()
-            .addStroke(GestureDescription.StrokeDescription(path, 0, 1000)) // 600ms swipe
+            .addStroke(GestureDescription.StrokeDescription(path, 0, 800))
             .build()
 
-        // Sink action to device by using behavior that was created before
-        dispatchGesture(gesture, object : AccessibilityService.GestureResultCallback() {
+        dispatchGesture(gesture, object : GestureResultCallback() {
             override fun onCompleted(gestureDescription: GestureDescription?) {
                 super.onCompleted(gestureDescription)
-                Log.d(TAG, "Scroll completed")
+                Log.d(TAG, "Scroll gesture completed")
             }
 
             override fun onCancelled(gestureDescription: GestureDescription?) {
                 super.onCancelled(gestureDescription)
+                Log.w(TAG, "Scroll gesture cancelled")
             }
         }, null)
     }
 
-    /**
-     * Logs the tree structure of the given [AccessibilityNodeInfo] for debugging purposes.
-     * @param node The root node to start logging from.
-     * @param depth The current depth in the tree, used for indentation (default is 0).
-     *
-     */
     private fun logNodeTree(node: AccessibilityNodeInfo?, depth: Int = 0) {
         if (node == null) return
-
         val indent = " ".repeat(depth * 2)
-        Log.d(TAG, "$indent Node: ${node.className}, Text: ${node.text}, ContentDescription: ${node.contentDescription}, Scrollable: ${node.isScrollable}")
-
+        Log.d(
+            TAG,
+            "$indent Node: ${node.className}, Text: ${node.text}, ContentDescription: ${node.contentDescription}, Scrollable: ${node.isScrollable}"
+        )
         for (i in 0 until node.childCount) {
             logNodeTree(node.getChild(i), depth + 1)
         }
     }
 
-    /**
-     * Use pattern to find scroll Node for perform scroll action
-     * @param node the first node in tree
-     */
     private fun findScrollNode(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-        if(node.isScrollable) return node
-        for(i in 0 until node.childCount) {
+        if (node.isScrollable) return node
+        for (i in 0 until node.childCount) {
             val child = node.getChild(i) ?: continue
-            val findScrollChild = findScrollNode(child)
-            if(findScrollChild != null) return findScrollChild
+            val found = findScrollNode(child)
+            if (found != null) return found
             child.recycle()
         }
         return null
     }
 
-    /**
-     * Check if the node can perform the scroll action
-     * @param node The AccessibilityNodeInfo to check.
-     * @param action The scroll action to check (e.g., ACTION_SCROLL_FORWARD or ACTION_SCROLL_BACKWARD).
-     */
     private fun nodeCanScroll(node: AccessibilityNodeInfo, action: Int): Boolean {
-        if(node.isScrollable) {
+        if (node.isScrollable) {
             val actions = node.actionList.map { it.id }
-            for( act in actions) {
-                if(act == action) return true
-            }
+            if (action in actions) return true
             val mask = node.actions
             return mask and action != 0
         }
