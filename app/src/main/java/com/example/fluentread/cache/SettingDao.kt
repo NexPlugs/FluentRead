@@ -12,7 +12,7 @@ import androidx.room.Query
  */
 @SuppressWarnings("TooManyFunctions")
 @Dao
-internal interface SettingDao {
+interface SettingDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(setting: Setting)
 

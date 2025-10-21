@@ -135,7 +135,7 @@ class ScrollAccessibilityService : AccessibilityService() {
         }
 
         val gesture = GestureDescription.Builder()
-            .addStroke(GestureDescription.StrokeDescription(path, 0, 300)) // 300ms swipe
+            .addStroke(GestureDescription.StrokeDescription(path, 0, 1000)) // 600ms swipe
             .build()
 
         // Sink action to device by using behavior that was created before
