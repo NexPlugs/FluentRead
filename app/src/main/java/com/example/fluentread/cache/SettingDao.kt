@@ -32,10 +32,4 @@ interface SettingDao {
     suspend fun deleteAllSettings()
 
 
-    @Query("UPDATE Setting SET value = :value, lastUpdated = :lastUpdated WHERE `key` = :key")
-    suspend fun updateSettingValue(key: String, value: String, lastUpdated: Long = System.currentTimeMillis())
-
-    @Query("SELECT * FROM Setting WHERE isVisible = 1 ORDER BY `group`, `order`")
-    suspend fun getVisibleSettings(): List<Setting>
-
 }

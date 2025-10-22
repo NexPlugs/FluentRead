@@ -10,11 +10,10 @@ import kotlinx.coroutines.SupervisorJob
 
 @Module
 @InstallIn(SingletonComponent::class)
-interface AppModule {
+internal object AppModule {
     @Provides
     @IOScope
     fun provideIOScope(): CoroutineScope {
         return CoroutineScope(Dispatchers.IO + SupervisorJob())
     }
-
 }

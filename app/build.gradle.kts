@@ -92,7 +92,9 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 
     // Room
+    ksp(libs.room.compiler)
     implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
 
     //Navigation
     implementation(libs.navigation.compose)

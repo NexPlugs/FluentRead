@@ -10,7 +10,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import com.example.fluentread.utils.launchWithMutex
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+
 
 /**
  * [ScrollAccessibilityService] is an AccessibilityService that can be used to scroll the screen.
@@ -85,12 +85,6 @@ class ScrollAccessibilityService : AccessibilityService() {
     }
 
     fun canScroll(): Boolean = true
-
-    override fun onDestroy() {
-        serviceScope.cancel()
-        super.onDestroy()
-    }
-
     /**
      * Scrolls the view represented by the given [AccessibilityNodeInfo].
      */
@@ -171,6 +165,13 @@ class ScrollAccessibilityService : AccessibilityService() {
         return null
     }
 
+    fun autoScroll() {
+        while(canScroll()) {
+            scrollDown()
+            Thread.sleep(2000)
+        }
+    }
+
     private fun nodeCanScroll(node: AccessibilityNodeInfo, action: Int): Boolean {
         if (node.isScrollable) {
             val actions = node.actionList.map { it.id }
@@ -180,4 +181,10 @@ class ScrollAccessibilityService : AccessibilityService() {
         }
         return false
     }
+
+    override fun onDestroy() {
+        serviceScope.cancel()
+        super.onDestroy()
+    }
+
 }

@@ -8,7 +8,7 @@ import androidx.room.RoomDatabase
     version = 1,
     exportSchema = false
 )
-abstract class AppDatabase: RoomDatabase() {
+internal abstract class AppDatabase: RoomDatabase() {
     abstract fun settingDao(): SettingDao
 
     companion object {
