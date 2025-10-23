@@ -8,8 +8,10 @@ import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.*
+import com.example.fluentread.utils.launchWithMutex
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.coroutines.resume
@@ -34,8 +36,10 @@ object CameraXService : LifecycleOwner {
 
     //region === Coroutine & Events ===
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
     private val _events = MutableSharedFlow<CameraServiceListener>()
     val events: SharedFlow<CameraServiceListener> = _events.asSharedFlow()
+    private val mutex: Mutex = Mutex()
 
     private fun post(event: CameraServiceListener) = scope.launch { _events.emit(event) }
     //endregion
@@ -61,9 +65,10 @@ object CameraXService : LifecycleOwner {
             return
         }
 
-        lifecycleRegistry.currentState = Lifecycle.State.RESUMED
-        Log.d(TAG, "Starting CameraX...")
-        scope.launch {
+        scope.launchWithMutex(mutex) {
+            lifecycleRegistry.currentState = Lifecycle.State.RESUMED
+            Log.d(TAG, "Starting CameraX...")
+
             runCatching {
                 val provider = context.getCameraProvider()
                 cameraProvider = provider

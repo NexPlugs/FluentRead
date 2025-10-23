@@ -20,7 +20,10 @@ import javax.inject.Inject
 data class SettingUiState(
     val distanceDuration: Double = 0.0,
     val delayScroll: Double = 0.0,
-    val setting: Setting? = null
+    val setting: Setting? = null,
+    val isEyeTrackingEnabled: Boolean = false,
+    val eyeTrackingSensitivity: Float = 1f
+
 )
 
 

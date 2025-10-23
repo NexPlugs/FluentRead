@@ -107,7 +107,7 @@ class AppController : Service() {
     // region === Observers ===
     private fun observeCameraFrames() {
         serviceScope.launch {
-            CameraXService.listener.collect { event ->
+            CameraXService.events.collect { event ->
                 when (event) {
                     is CameraServiceListener.OnImageProxy -> FaceDetectorService.detectFace(event.imageProxy)
                     else -> Unit

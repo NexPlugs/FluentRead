@@ -43,9 +43,8 @@ object FaceDetectorService {
     private var _faceBehavior: MutableSharedFlow<FaceBehavior> = MutableSharedFlow()
     val behavior: SharedFlow<FaceBehavior> get() = _faceBehavior
 
-    private fun emitBehavior(behavior: FaceBehavior) {
-        detectScope.launch { _faceBehavior.emit(behavior) }
-    }
+    private fun post(behavior: FaceBehavior) = detectScope.launch { _faceBehavior.emit(behavior) }
+
 
 
     init {
@@ -83,9 +82,9 @@ object FaceDetectorService {
             return
         }
 
-        Log.d(TAG, "Image info: ${inputImage.imageInfo}")
+        Log.i(TAG, "Image info: ${inputImage.imageInfo}")
         // Convert the input image to an ML Kit InputImage
-        try {
+        runCatching {
             val image = InputImage.fromMediaImage(mediaImage, inputImage.imageInfo.rotationDegrees)
 
             // Process the image using the face detector
@@ -104,22 +103,22 @@ object FaceDetectorService {
                         when {
                             angelX < -CENTER_THRESHOLD -> {
                                 Log.d(TAG, "detectFace: Face is looking down: $angelX")
-                                emitBehavior(FaceBehavior.DOWN)
+                                post(FaceBehavior.DOWN)
                             }
                             angelX > CENTER_THRESHOLD -> {
                                 Log.d(TAG, "detectFace: Face is looking up: $angelX")
-                                emitBehavior(FaceBehavior.UP)
+                                post(FaceBehavior.UP)
                             }
                             angelY < -CENTER_THRESHOLD -> {
                                 Log.d(TAG, "detectFace: Face is looking left: $angelY")
-                                emitBehavior(FaceBehavior.CENTER)
+                                post(FaceBehavior.CENTER)
                             }
                         }
                     }
                     inputImage.close()
                 }
-        } catch (e: Exception) {
-            Log.d(TAG, "detectFace: Error detecting face: ${e.message}")
+        }.onFailure {
+            Log.e(TAG, "detectFace: Error detecting face: ${it.message}", it)
         }
     }
 
@@ -127,14 +126,12 @@ object FaceDetectorService {
      * CLean up resources when the service is destroyed
      */
     fun onDestroy() {
-        Log.d(TAG, "onDestroy: Destroying FaceDetectorService")
-
-        try {
+        Log.i(TAG, "onDestroy: Destroying FaceDetectorService")
+        runCatching {
             faceDetector?.close()
-
             detectScope.cancel()
-        } catch (e: Exception) {
-            Log.d(TAG, "onDestroy: Error destroying FaceDetectorService: ${e.message}")
+        }.onFailure {
+            Log.e(TAG, "onDestroy: Error destroying FaceDetectorService: ${it.message}", it)
         }
     }
 }
