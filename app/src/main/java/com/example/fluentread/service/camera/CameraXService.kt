@@ -1,206 +1,176 @@
+@file:Suppress("MissingPermission", "OPT_IN_USAGE")
+
 package com.example.fluentread.service.camera
 
 import android.content.Context
 import android.util.Log
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ExperimentalGetImage
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageProxy
+import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.suspendCoroutine
 
 object CameraXService : LifecycleOwner {
 
     private const val TAG = "CameraXService"
 
-    // Lifecycle registry to manage the lifecycle of the service
-    private val lifeCycleRegistry: LifecycleRegistry by lazy { LifecycleRegistry(this) }
-    override val lifecycle: Lifecycle get() = lifeCycleRegistry
+    //region === Lifecycle ===
+    private val lifecycleRegistry by lazy { LifecycleRegistry(this) }
+    override val lifecycle: Lifecycle get() = lifecycleRegistry
+    //endregion
 
-    // CameraX variables
+    //region === Internal State ===
     private var cameraProvider: ProcessCameraProvider? = null
     private var cameraExecutor: ExecutorService? = null
-    private var isCameraInitialized = false
-    private var isCameraRunning = false
+    private var isRunning = false
+    private var isInitialized = false
+    //endregion
 
-    // Coroutine scope for the service
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    //region === Coroutine & Events ===
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val _events = MutableSharedFlow<CameraServiceListener>()
+    val events: SharedFlow<CameraServiceListener> = _events.asSharedFlow()
 
-    // SharedFlow to emit camera events
-    private val _listener = MutableSharedFlow<CameraServiceListener>(replay = 0)
-    val listener: SharedFlow<CameraServiceListener> get() = _listener
+    private fun post(event: CameraServiceListener) = scope.launch { _events.emit(event) }
+    //endregion
 
-    private fun emitEvent(event: CameraServiceListener) {
-        serviceScope.launch { _listener.emit(event) }
+    //region === Public Lifecycle Methods ===
+    fun onCreate(context: Context) = runCatching {
+        Log.i(TAG, "Initializing CameraXService...")
+        lifecycleRegistry.currentState = Lifecycle.State.CREATED
+        cameraExecutor = Executors.newSingleThreadExecutor()
+        isInitialized = true
+    }.onFailure {
+        Log.e(TAG, "Camera initialization failed: ${it.message}", it)
+        isInitialized = false
     }
 
-    /**
-     * Initialize the CameraX service
-     * @param context The context to use for initializing the camera
-     */
-    fun onCreate(context: Context) {
-        Log.d(TAG, "onCreate: Initializing CameraXService")
-        try {
-            lifeCycleRegistry.currentState = Lifecycle.State.CREATED
-            cameraExecutor = Executors.newSingleThreadExecutor()
-            isCameraInitialized = true
-        } catch (e: Exception) {
-            Log.d(TAG, "onCreate: Error initializing CameraX: ${e.message}")
-            isCameraInitialized = false
-        }
-    }
-
-    /**
-     * Start the CameraX service
-     * @param context The context to use for starting the camera
-     */
     fun onStartCameraX(context: Context) {
-        if (isCameraRunning) {
-            Log.d(TAG, "onStartCameraX: Camera is already running")
+        if (!isInitialized) {
+            Log.w(TAG, "CameraXService not initialized, call onCreate() first.")
+            return
+        }
+        if (isRunning) {
+            Log.d(TAG, "Camera already running, ignoring start request.")
             return
         }
 
-        // Ensure the camera is initialized
-        lifeCycleRegistry.currentState = Lifecycle.State.RESUMED
-        Log.d(TAG, "onStartCameraX: Starting CameraX")
-        try {
-            // Get the camera provider
-            val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
-
-            // Add a listener to the camera provider future
-            cameraProviderFuture.addListener({
-                try {
-                    cameraProvider = cameraProviderFuture.get()
-                    bindUseCase()
-                } catch (e: Exception) {
-                    Log.d(TAG, "onStartCameraX: Error starting CameraX: ${e.message}")
-                }
-            }, ContextCompat.getMainExecutor(context))
-        } catch (e: Exception) {
-            Log.d(TAG, "onStartCameraX: Error starting CameraX: ${e.message}")
-            isCameraRunning = false
-        }
-    }
-
-
-    /**
-     * Bind the camera use case to the lifecycle
-     * - Uses the front camera by default
-     * - Sets up an image analyzer to process camera frames
-     */
-    fun bindUseCase() {
-        val provider = cameraProvider ?: return
-        val executor = cameraExecutor ?: return
-        // Unbind any previous use cases
-        provider.unbindAll()
-
-        val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
-
-        // Set up the image analyzer
-        val analyzer = ImageAnalysis.Builder()
-            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .build()
-            .also { it.setAnalyzer(executor, FaceAnalyzer()) }
-        try {
-            if (!provider.hasCamera(cameraSelector)) {
-                Log.d(TAG, "bindUseCase: No camera available")
-                emitEvent(CameraServiceListener.OnCameraError("No camera available"))
-                return
+        lifecycleRegistry.currentState = Lifecycle.State.RESUMED
+        Log.d(TAG, "Starting CameraX...")
+        scope.launch {
+            runCatching {
+                val provider = context.getCameraProvider()
+                cameraProvider = provider
+                bindUseCase(provider)
+                post(CameraServiceListener.OnCameraOpened)
+            }.onFailure {
+                Log.e(TAG, "Failed to start CameraX: ${it.message}", it)
+                post(CameraServiceListener.OnCameraError(it.message ?: "Unknown error"))
             }
-            // Bind the camera to the lifecycle
-            provider.bindToLifecycle(this, cameraSelector, analyzer)
-            isCameraRunning = true
-            emitEvent(CameraServiceListener.OnCameraOpened)
-        } catch (e: Exception) {
-            Log.d(TAG, "bindUseCase: Error binding use cases: ${e.message}")
-            onStopCameraX()
         }
     }
 
-    /**
-     * Stop the camera and release resources
-     */
     fun onStopCameraX() {
-        if (!isCameraRunning) {
-            Log.d(TAG, "onStopCameraX: Camera is not running")
+        if (!isRunning) {
+            Log.d(TAG, "Camera is not running, nothing to stop.")
             return
         }
-        Log.d(TAG, "onStopCameraX: Stopping CameraX")
-        try {
+
+        Log.i(TAG, "Stopping CameraX...")
+        runCatching {
             cameraProvider?.unbindAll()
-            lifeCycleRegistry.currentState = Lifecycle.State.CREATED
-            isCameraRunning = false
-            emitEvent(CameraServiceListener.OnCameraDisconnected)
-        } catch (e: Exception) {
-            Log.d(TAG, "onStopCameraX: Error stopping CameraX: ${e.message}")
-            isCameraRunning = true
-        }
-    }
-
-    /**
-     * Turn on the camera flash (torch mode)
-     * - Only works if the device has a flash
-     * - Uses the back camera
-     */
-    fun openFlash() {
-        val provider = cameraProvider ?: return
-        try {
-            provider.unbindAll()
-            val camera = provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA)
-            camera.cameraControl.enableTorch(true)
-        } catch (e: Exception) {
-            Log.d(TAG, "openFlash: Error opening flash: ${e.message}")
-        }
-    }
-
-    /**
-     * Image analyzer to process camera frames
-     * - Emits OnImageProxy and OnImageAvailable events
-     * - Closes the ImageProxy after processing
-     */
-    private class FaceAnalyzer : ImageAnalysis.Analyzer {
-
-        @ExperimentalGetImage
-        override fun analyze(proxy: ImageProxy) {
-            Log.d(TAG, "analyze: Analyzing image: ${proxy.imageInfo}")
-            try {
-                val image = proxy.image
-                if (image != null) {
-                    emitEvent(CameraServiceListener.OnImageAvailable(image))
-                    emitEvent(CameraServiceListener.OnImageProxy(proxy))
-                } else {
-                    proxy.close()
-                }
-            } catch (e: Exception) {
-                Log.d(TAG, "analyze: Error analyzing image: ${e.message}")
-                proxy.close()
-            }
+            lifecycleRegistry.currentState = Lifecycle.State.CREATED
+            isRunning = false
+            post(CameraServiceListener.OnCameraDisconnected)
+        }.onFailure {
+            Log.e(TAG, "Error stopping CameraX: ${it.message}", it)
         }
     }
 
     fun onDestroy() {
-        Log.d(TAG, "onDestroy: Destroying CameraXService")
-
-        try {
-            // Shutdown the camera executor and unbind all use cases
-            cameraExecutor?.shutdown()
+        Log.i(TAG, "Destroying CameraXService...")
+        runCatching {
             cameraProvider?.unbindAll()
-
-            lifeCycleRegistry.currentState = Lifecycle.State.DESTROYED
-            isCameraInitialized = false
-            isCameraRunning = false
-            serviceScope.cancel()
-        } catch (e: Exception) {
-            Log.d(TAG, "onDestroy: Error destroying CameraXService: ${e.message}")
+            cameraExecutor?.shutdown()
+            scope.cancel()
+            lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
+            isRunning = false
+            isInitialized = false
+        }.onFailure {
+            Log.e(TAG, "Error destroying CameraXService: ${it.message}", it)
         }
-        emitEvent(CameraServiceListener.OnCameraDisconnected)
+        post(CameraServiceListener.OnCameraDisconnected)
     }
+    //endregion
+
+    //region === Camera Binding & Analyzer ===
+    private fun bindUseCase(provider: ProcessCameraProvider) {
+        val executor = cameraExecutor ?: return
+        val selector = CameraSelector.DEFAULT_FRONT_CAMERA
+
+        provider.unbindAll()
+
+        val analyzer = ImageAnalysis.Builder()
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .build()
+            .apply {
+                setAnalyzer(executor, FaceAnalyzer())
+            }
+
+        runCatching {
+            if (!provider.hasCamera(selector)) {
+                throw IllegalStateException("No front camera available.")
+            }
+            provider.bindToLifecycle(this, selector, analyzer)
+            isRunning = true
+        }.onFailure {
+            Log.e(TAG, "Failed to bind use case: ${it.message}", it)
+            post(CameraServiceListener.OnCameraError(it.message ?: "Binding error"))
+            onStopCameraX()
+        }
+    }
+
+    fun openFlash() = runCatching {
+        val provider = cameraProvider ?: return@runCatching null
+        provider.unbindAll()
+        val camera = provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA)
+        camera.cameraControl.enableTorch(true)
+    }.onFailure {
+        Log.e(TAG, "Failed to open flash: ${it.message}", it)
+    }
+    //endregion
+
+    //region === Image Analyzer ===
+    private class FaceAnalyzer : ImageAnalysis.Analyzer {
+        @ExperimentalGetImage
+        override fun analyze(proxy: ImageProxy) {
+            try {
+                proxy.image?.let { image ->
+                    post(CameraServiceListener.OnImageAvailable(image))
+                    post(CameraServiceListener.OnImageProxy(proxy))
+                } ?: proxy.close()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error analyzing image: ${e.message}", e)
+                proxy.close()
+            }
+        }
+    }
+    //endregion
 }
+
+//region === Extension Utilities ===
+private suspend fun Context.getCameraProvider(): ProcessCameraProvider =
+    suspendCoroutine { cont ->
+        val future = ProcessCameraProvider.getInstance(this)
+        future.addListener({
+            runCatching { cont.resume(future.get()) }
+                .onFailure { cont.resumeWithException(it) }
+        }, ContextCompat.getMainExecutor(this))
+    }
+//endregion

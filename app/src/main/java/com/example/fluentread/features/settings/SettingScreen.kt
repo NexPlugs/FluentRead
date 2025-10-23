@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -33,25 +34,49 @@ private fun SettingScreen(modifier: Modifier) {
         fontWeight = FontWeight.Bold
     )
 
-    val itemModifier = Modifier.padding(horizontal = 12.dp)
+    val itemModifier = Modifier.padding(horizontal = 16.dp)
 
-    Column(
+    Scaffold(
         modifier = modifier,
-        horizontalAlignment = Alignment.Start,
-    ) {
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            "Settings",
-            style = headerStyle,
-            modifier = itemModifier
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        HorizontalDivider()
-        Text(
-            "Eye Tracking",
-            style = headerStyle,
-            modifier = itemModifier
-        )
+        topBar = {
+            //
+            Text(
+                text = "Settings",
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold
+                ),
+                modifier = Modifier.padding(
+                    top = 32.dp,
+                    start = 16.dp,
+                    bottom = 12.dp
+                )
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = modifier
+                .padding(paddingValues)
+                .padding(12.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Eye Tracking",
+                style = headerStyle,
+                modifier = itemModifier
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            EyeTrackingField()
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+
+            // More settings fields can be added here
+        }
+
     }
 }
 
