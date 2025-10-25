@@ -40,11 +40,29 @@ class AppController : Service() {
     companion object {
         private const val TAG = "AppController"
         private const val NOTIFICATION_ID = 0x2001
+
+        private var INSTANCE: AppController? = null
+
+        fun getInstance(): AppController? = INSTANCE
     }
+
+    init { INSTANCE = this }
 
     // State flow for shared app data
     private val _data = MutableStateFlow(AppData())
     val data: StateFlow<AppData> get() = _data
+
+    val cameraIsRunning: Boolean get() = _data.value.cameraIsRunning
+
+    // Initialization flag
+    private var _isInitialized = false
+    val isInitialized: Boolean get() = _isInitialized
+
+    // Convenience property to check if eye tracking is active
+    val isEyeTracking: Boolean get() {
+        if(!isInitialized) return false
+        return cameraIsRunning
+    }
 
     // Dependencies
     private val notificationHelper by lazy {
@@ -66,6 +84,7 @@ class AppController : Service() {
         super.onCreate()
         ensureOverlayPermission()
         CameraXService.onCreate(applicationContext)
+        _isInitialized = true
         Log.d(TAG, "Service created.")
     }
 
@@ -153,12 +172,13 @@ class AppController : Service() {
     // region === Notification ===
     @SuppressLint("ForegroundServiceType")
     private fun startNotificationForeground() {
-        try {
+
+        runCatching {
             val builder = notificationHelper.initNotificationBuilder()
             notificationHelper.createNotificationChannel()
             startForeground(NOTIFICATION_ID, builder.build())
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to start foreground notification: ${e.message}", e)
+        }.onFailure {
+            Log.e(TAG, "Failed to start foreground notification: ${it.message}", it)
         }
     }
     // endregion

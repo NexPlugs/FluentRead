@@ -1,10 +1,15 @@
 package com.example.fluentread.features.settings
 
+import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fluentread.cache.DatabaseSettingRepository
 import com.example.fluentread.cache.Setting
+import com.example.fluentread.permissions.AppPermissions
+import com.example.fluentread.service.AppController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,8 +27,8 @@ data class SettingUiState(
     val delayScroll: Double = 0.0,
     val setting: Setting? = null,
     val isEyeTrackingEnabled: Boolean = false,
-    val eyeTrackingSensitivity: Float = 1f
-
+    val eyeTrackingSensitivity: Float = 1f,
+    val isAccessibilityServiceRunning: Boolean = false
 )
 
 
@@ -36,6 +41,11 @@ data class SettingUiState(
 class SettingViewModel @Inject constructor(
     val databaseSettingRepository: DatabaseSettingRepository,
 ): ViewModel() {
+
+    private val appPermissions: AppPermissions = AppPermissions.getInstance()
+
+    @SuppressLint("StaticFieldLeak")
+    val appController: AppController? = AppController.getInstance()
 
     private val _settingUiState: MutableStateFlow<SettingUiState> = MutableStateFlow<SettingUiState>(SettingUiState())
 
@@ -71,21 +81,41 @@ class SettingViewModel @Inject constructor(
         }
     }
 
+    fun getAccessibilityServiceStatus(context: Context) {
+        viewModelScope.launch {
+            val isRunning = appPermissions.isAccessibilityPermissionGranted(context)
+            val isEyeTrackingEnabled = appController?.isEyeTracking == true
+            _settingUiState.update {
+                it.copy(isAccessibilityServiceRunning = isRunning, isEyeTrackingEnabled = isEyeTrackingEnabled)
+            }
+        }
+    }
 
-    fun updateSettings(distanceDuration: Double? = null, delayScroll: Double? = null) {
+    fun grantedAccessibilityService(activity: Activity) {
+        appPermissions.requestAccessibilityPermission(activity)
+    }
+
+
+    fun updateSettings(
+        distanceDuration: Double? = null,
+        delayScroll: Double? = null,
+        eyeTrackingSensitivity: Float? = null
+    ) {
         viewModelScope.launch {
             val currentSetting = _settingUiState.value.setting
             if (currentSetting != null) {
                 val updatedSetting = currentSetting.copy(
                     distanceDuration = distanceDuration ?: currentSetting.distanceDuration,
                     delayScroll = delayScroll ?: currentSetting.delayScroll
+
                 )
                 databaseSettingRepository.insertSetting(updatedSetting)
                 _settingUiState.update {
                     it.copy(
                         setting = updatedSetting,
                         distanceDuration = updatedSetting.distanceDuration,
-                        delayScroll = updatedSetting.delayScroll
+                        delayScroll = updatedSetting.delayScroll,
+                        eyeTrackingSensitivity = eyeTrackingSensitivity ?: it.eyeTrackingSensitivity
                     )
                 }
             }

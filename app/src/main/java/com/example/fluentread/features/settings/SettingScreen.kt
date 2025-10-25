@@ -1,18 +1,22 @@
 package com.example.fluentread.features.settings
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -20,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.fluentread.features.components.BuildButton
 import com.example.fluentread.features.settings.utils.GeneralAction
+import com.example.fluentread.utils.launchAppController
 
 @Composable
 fun SettingRoute(
@@ -27,11 +32,44 @@ fun SettingRoute(
     viewModel: SettingViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // Access the current context if needed
+    val context = LocalContext.current
+
+    // Access the current activity if needed
+    val activity = LocalActivity.current
+
+    // Access the current window info to check if the window is focused
+    val windowInfo = LocalWindowInfo.current
+
+    LaunchedEffect(windowInfo) {
+        snapshotFlow { windowInfo.isWindowFocused }.collect { isWindowFocused ->
+            if (isWindowFocused) {
+                viewModel.getAccessibilityServiceStatus(context)
+            }
+        }
+    }
+
+    LaunchedEffect(true) {
+        viewModel.getAccessibilityServiceStatus(context)
+    }
+
+
     SettingScreen(
         modifier = modifier,
         uiState = uiState,
-        onEyeTrackingToggled = {},
-        onSensitivityChanged = {}
+        onEyeTrackingToggled = {
+            if(it) {
+                context.launchAppController()
+            }
+        },
+        onSensitivityChanged = {
+            viewModel.updateSettings(eyeTrackingSensitivity = it)
+        },
+        onGrantedPermissions = {
+            if(activity == null) return@SettingScreen
+            viewModel.grantedAccessibilityService(activity)
+        }
     )
 }
 
@@ -40,7 +78,8 @@ private fun SettingScreen(
     modifier: Modifier = Modifier,
     uiState: SettingUiState,
     onEyeTrackingToggled: (Boolean) -> Unit,
-    onSensitivityChanged: (Float) -> Unit
+    onSensitivityChanged: (Float) -> Unit,
+    onGrantedPermissions: () -> Unit
 ) {
     val cardShape = RoundedCornerShape(16.dp)
     val headerStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
@@ -52,11 +91,24 @@ private fun SettingScreen(
     Scaffold(
         modifier = modifier,
         topBar = {
-            Text(
-                text = "Settings",
-                style = headerStyle,
-                modifier = Modifier.padding(top = 40.dp, start = 16.dp, bottom = 12.dp)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Start
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Back",
+                    modifier = Modifier.padding(16.dp).size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "Settings",
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            }
         }
     ) { padding ->
         Column(
@@ -70,8 +122,8 @@ private fun SettingScreen(
             SectionHeader(text = "Eye Tracking")
             EyeTrackingCard(
                 modifier = fieldModifier,
-                enabled = true,
-                sensitivity = 10f,
+                enabled = uiState.isEyeTrackingEnabled,
+                sensitivity = uiState.eyeTrackingSensitivity,
                 onToggle = onEyeTrackingToggled,
                 onSensitivityChange = onSensitivityChanged
             )
@@ -79,7 +131,8 @@ private fun SettingScreen(
             SectionHeader(text = "Permissions")
             PermissionsField(
                 modifier = fieldModifier,
-                isEnabled = true
+                onGrantedPermissions = onGrantedPermissions,
+                isEnabled = uiState.isAccessibilityServiceRunning
             )
             Spacer(modifier = Modifier.height(4.dp))
             SectionHeader(text = "General")
@@ -96,6 +149,7 @@ private fun SectionHeader(text: String) {
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EyeTrackingCard(
     modifier: Modifier,
@@ -138,7 +192,6 @@ private fun EyeTrackingCard(
             text = "Sensitivity",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
         )
-        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = "Adjust the sensitivity of the eye tracking feature.",
             style = MaterialTheme.typography.bodySmall.copy(
@@ -148,18 +201,25 @@ private fun EyeTrackingCard(
         Spacer(modifier = Modifier.height(4.dp))
         Slider(
             value = sensitivity,
-            onValueChange = onSensitivityChange,
-            valueRange = 0f..1f,
-            steps = 4,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(10.dp)
-                .semantics { this.contentDescription = "Eye Tracking Sensitivity Slider" },
-            colors = SliderDefaults.colors(
-                thumbColor = MaterialTheme.colorScheme.primary,
-                activeTrackColor = MaterialTheme.colorScheme.primary,
-                inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-            )
+            onValueChange = {
+                onSensitivityChange(it)
+            },
+            valueRange = 0f..10f,
+            modifier = Modifier.height(2.dp),
+            track = { sliderState ->
+                SliderDefaults.Track(
+                    sliderState = sliderState,
+                    modifier = Modifier
+                        .height(10.dp)
+                        .background(Color.White, shape = RoundedCornerShape(12.dp))
+                        .clip(CircleShape),
+                    colors = SliderDefaults.colors(
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.primary,
+                    )
+                )
+            },
+            thumb = {}
         )
         Spacer(modifier = Modifier.height(4.dp))
     }
@@ -168,7 +228,8 @@ private fun EyeTrackingCard(
 @Composable
 private fun PermissionsField(
     modifier: Modifier,
-    isEnabled: Boolean
+    isEnabled: Boolean,
+    onGrantedPermissions: () -> Unit = {}
 ) {
     Column(
         modifier = modifier,
@@ -212,27 +273,28 @@ private fun PermissionsField(
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
-        BuildButton(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.CenterHorizontally),
-            color = MaterialTheme.colorScheme.primary,
-            onPress = {},
-            enableWidth = false,
-            height = 52.dp,
-            content = {
-                Text(
-                    text = if (isEnabled) "Disable Accessibility" else "Grant Permission",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp, horizontal = 16.dp)
-                        .align(Alignment.CenterHorizontally)
-                )
-            },
-            radius = 12f
-        )
+        if(!isEnabled)
+            BuildButton(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.CenterHorizontally),
+                color = MaterialTheme.colorScheme.primary,
+                onPress = onGrantedPermissions,
+                enableWidth = false,
+                height = 52.dp,
+                content = {
+                    Text(
+                        text = "Grant Permission",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp, horizontal = 16.dp)
+                            .align(Alignment.CenterHorizontally)
+                    )
+                },
+                radius = 12f
+            )
     }
 }
 
@@ -282,7 +344,8 @@ private fun SettingScreenPreview() {
                 eyeTrackingSensitivity = 0.7f
             ),
             onEyeTrackingToggled = {},
-            onSensitivityChanged = {}
+            onSensitivityChanged = {},
+            onGrantedPermissions = {},
         )
     }
 }
