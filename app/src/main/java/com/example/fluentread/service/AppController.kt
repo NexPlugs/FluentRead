@@ -11,6 +11,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.core.content.ContextCompat
 import com.example.fluentread.R
+import com.example.fluentread.service.AppControllerRepository
 import com.example.fluentread.service.accessibility.ScrollAccessibilityService
 import com.example.fluentread.service.camera.CameraServiceListener
 import com.example.fluentread.service.camera.CameraXService
@@ -18,6 +19,7 @@ import com.example.fluentread.service.mlk.FaceBehavior
 import com.example.fluentread.service.mlk.FaceDetectorService
 import com.example.fluentread.service.notification.NotificationHelper
 import com.example.fluentread.service.overlay.ToggleView
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -25,6 +27,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * Foreground service that coordinates:
@@ -33,26 +36,21 @@ import kotlinx.coroutines.launch
  * - Accessibility for auto-scrolling based on user’s gaze
  * - ToggleView overlay for user control
  */
+@AndroidEntryPoint
 class AppController : Service() {
+    @Inject lateinit var appControllerRepository: AppControllerRepository
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     companion object {
         private const val TAG = "AppController"
         private const val NOTIFICATION_ID = 0x2001
-
-        private var INSTANCE: AppController? = null
-
-        fun getInstance(): AppController? = INSTANCE
     }
 
-    init { INSTANCE = this }
 
     // State flow for shared app data
-    private val _data = MutableStateFlow(AppData())
-    val data: StateFlow<AppData> get() = _data
 
-    val cameraIsRunning: Boolean get() = _data.value.cameraIsRunning
+    val cameraIsRunning: Boolean get() = appControllerRepository.appData.value.cameraIsRunning
 
     // Initialization flag
     private var _isInitialized = false
@@ -113,13 +111,13 @@ class AppController : Service() {
         CameraXService.onStartCameraX(this)
         observeCameraFrames()
         observeFaceBehavior()
-        _data.value = _data.value.copy(cameraIsRunning = true)
+        appControllerRepository.updateAppData( cameraIsRunning = true)
     }
 
     private fun stopTracking() {
         Log.d(TAG, "stopTracking: Stopping face tracking.")
         CameraXService.onStopCameraX()
-        _data.value = _data.value.copy(cameraIsRunning = false)
+        appControllerRepository.updateAppData( cameraIsRunning = false)
     }
     // endregion
 
@@ -164,7 +162,7 @@ class AppController : Service() {
         setImageDrawable(ContextCompat.getDrawable(context, R.drawable.app_icon))
         layoutParams = ViewGroup.LayoutParams(100, 100)
         setOnClickListener {
-            if (_data.value.cameraIsRunning) stopTracking() else startTracking()
+            if (cameraIsRunning) stopTracking() else startTracking()
         }
     }
     // endregion

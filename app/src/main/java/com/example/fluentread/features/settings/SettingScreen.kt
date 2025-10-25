@@ -45,13 +45,13 @@ fun SettingRoute(
     LaunchedEffect(windowInfo) {
         snapshotFlow { windowInfo.isWindowFocused }.collect { isWindowFocused ->
             if (isWindowFocused) {
-                viewModel.getAccessibilityServiceStatus(context)
+                viewModel.isAccessibilityPermissionGranted()
             }
         }
     }
 
     LaunchedEffect(true) {
-        viewModel.getAccessibilityServiceStatus(context)
+        viewModel.isAccessibilityPermissionGranted()
     }
 
 
@@ -68,7 +68,7 @@ fun SettingRoute(
         },
         onGrantedPermissions = {
             if(activity == null) return@SettingScreen
-            viewModel.grantedAccessibilityService(activity)
+            viewModel.requestAccessibilityPermission(activity)
         }
     )
 }
