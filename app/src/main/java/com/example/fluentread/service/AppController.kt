@@ -170,7 +170,6 @@ class AppController : Service() {
     // region === Notification ===
     @SuppressLint("ForegroundServiceType")
     private fun startNotificationForeground() {
-
         runCatching {
             val builder = notificationHelper.initNotificationBuilder()
             notificationHelper.createNotificationChannel()
