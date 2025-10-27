@@ -10,6 +10,9 @@ import com.example.fluentread.service.audio.models.getMimType
 import com.example.fluentread.service.file.FileHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.io.File
 import kotlin.jvm.Throws
 
@@ -93,7 +96,7 @@ class AudioMediaRecorder(
                 MediaRecorderState.RECORDING -> {
                     recordingStartTime = System.currentTimeMillis()
                     Log.d(TAG, "Recording started at $recordingStartTime")
-                    // Notify listener that recording has started
+                    trackingMaxDuration()
                 }
                 else -> { recordingStartTime = 0L }
             }
@@ -126,6 +129,8 @@ class AudioMediaRecorder(
      * File where the current recording is being saved.
      */
     private var recordingFile: File? = null
+
+    private var trackingRecordingDurationJob: Job? = null
 
     // Initial all listener value
 
@@ -297,6 +302,9 @@ class AudioMediaRecorder(
         }
     }
 
+    /**
+     * Releases resources associated with the MediaRecorder.
+     */
     override fun release() {
         mediaRecorder?.release()
         mediaRecorderState = MediaRecorderState.IDLE
@@ -311,6 +319,29 @@ class AudioMediaRecorder(
                 what = what,
                 extra = extra
             )
+        }
+    }
+
+    /**
+     * Tracks the maximum duration of the current recording and notifies the listener of duration changes.
+     */
+    private fun trackingMaxDuration() {
+        trackingRecordingDurationJob?.cancel()
+        trackingRecordingDurationJob = null
+
+        trackingRecordingDurationJob = recordCoroutine.launch {
+            while (mediaRecorderState == MediaRecorderState.RECORDING) {
+                val currentDuration = recordingStartTime?.let {
+                    System.currentTimeMillis() - it
+                } ?: 0L
+
+                onCurrentRecordDurationChangeListener?.onCurrentRecordDurationChange(
+                    appMediaRecorder = this@AudioMediaRecorder,
+                    currentDuration = currentDuration
+                )
+
+                delay(1000L)
+            }
         }
     }
 
