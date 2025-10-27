@@ -6,6 +6,7 @@ import android.media.MediaRecorder
 import android.os.Build
 import android.util.Log
 import com.example.fluentread.service.audio.models.RecordResult
+import com.example.fluentread.service.audio.models.getMimType
 import com.example.fluentread.service.file.FileHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -223,6 +224,11 @@ class AudioMediaRecorder(
         throw IllegalStateException("Unreachable code reached in startAudioRecording.")
     }
 
+    /**
+     * Stops the current audio recording and returns the result.
+     * @return RecordResult containing details about the recording.
+     * @throws IllegalStateException if stopping the recording fails.
+     */
     override fun stopRecording(): RecordResult {
         if(mediaRecorder == null) {
             return RecordResult(
@@ -233,12 +239,41 @@ class AudioMediaRecorder(
 
         return runCatching {
             mediaRecorder?.stop()
-            val calcuAudioDuration = recordingStartTime?.let {
+
+            // region == Calculate duration ==
+            val calculateAudioDuration = recordingStartTime?.let {
                 System.currentTimeMillis() - it
             }
-            val recordedFile = recordingFile
+            val audioDuration = getAudioDuration(recordingFile)
+            Log.d(TAG, "stopRecording: Calculated audio duration: $calculateAudioDuration ms, Actual audio duration: $audioDuration ms")
+
+            val duration = when(audioDuration > 0) {
+                true -> audioDuration
+                else -> calculateAudioDuration ?: 0L
+            }
+            // endregion
+
+            release()
+            onRecordStoppedListener?.onRecordStopped()
+
+            val result = RecordResult(
+                success = true,
+                filePath = recordingFile?.absolutePath,
+                mimeType =  audiEncoder.getMimType(),
+                extraData = mapOf(
+                    "duration_ms" to duration,
+                    "bit_rate" to encodeBitRate,
+                    "sampling_rate" to audiSamplingRate,
+                    "channels" to audiChannel
+                ),
+                fileName = recordingFile?.name,
+                duration = duration
+            )
+            Log.d(TAG, "stopRecording: Audio recording stopped successfully. File saved at: ${recordingFile?.absolutePath}")
+            result
         }.getOrElse { err ->
             Log.e(TAG, "stopRecording: Failed to stop audio recording: ${err.message}", err)
+            release()
             RecordResult(
                 success = false,
                 errorMessage = "Failed to stop recording: ${err.message}"
@@ -279,6 +314,11 @@ class AudioMediaRecorder(
         }
     }
 
+    /**
+     * Gets the duration of the audio file in milliseconds.
+     * @param file The audio file.
+     * return Duration in milliseconds, or 0 if the file is null or an error occurs.
+     */
     private fun getAudioDuration(file: File?): Long {
         file ?: return 0
         // Use MediaMetadataRetriever to get the duration of the audio file
