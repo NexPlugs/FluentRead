@@ -12,7 +12,7 @@ interface AppMediaRecorder {
     fun startAudioRecording(
         recordingName: String,
         amplitudePollingInterval: Long = 100L,
-    ): File
+    ): Unit
 
     fun stopRecording(): RecordResult
 

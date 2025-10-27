@@ -133,7 +133,6 @@ class ToggleView(
 
                 }
             })
-
             // Set the ignore child event function
             this.setOnTouchListener { _, motionEvent ->
                 handleMovement(motionEvent)

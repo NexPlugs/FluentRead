@@ -159,8 +159,9 @@ class AppController : Service() {
 
     // Create the toggle button view
     private fun createToggleButton(): ImageView = ImageView(this).apply {
-        setImageDrawable(ContextCompat.getDrawable(context, R.drawable.app_icon))
-        layoutParams = ViewGroup.LayoutParams(100, 100)
+        setImageDrawable(ContextCompat.getDrawable(context, R.drawable.app_icon)).apply {
+            layoutParams = ViewGroup.LayoutParams(100, 100)
+        }
         setOnClickListener {
             if (cameraIsRunning) stopTracking() else startTracking()
         }

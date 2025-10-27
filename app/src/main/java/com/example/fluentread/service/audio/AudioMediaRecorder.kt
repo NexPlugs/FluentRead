@@ -1,6 +1,7 @@
 package com.example.fluentread.service.audio
 
 import android.content.Context
+import android.media.MediaMetadataRetriever
 import android.media.MediaRecorder
 import android.os.Build
 import android.util.Log
@@ -190,7 +191,7 @@ class AudioMediaRecorder(
     override fun startAudioRecording(
         recordingName: String,
         amplitudePollingInterval: Long,
-    ): File {
+    ): Unit {
         if(mediaRecorder == null) {
             initialMediaRecorderForAudio(
                 saveFile = File.createTempFile("temp_recording", null, context.cacheDir)
@@ -198,20 +199,20 @@ class AudioMediaRecorder(
         }
         runCatching {
             // Create or get the file to save the recording
-            val saveFile = FileHelper.createFileInCache(
+            FileHelper.createFileInCache(
                 context = context,
                 fileName = recordingName,
-            ) ?: throw IllegalStateException("Failed to create audio file in cache.")
+            )?.let { it ->
+                recordingFile = it
+                mediaRecorder?.start()
+                onRecordStartedListener?.onRecordStarted()
 
-            recordingFile = saveFile
-            mediaRecorder?.start()
-            onRecordStartedListener?.onRecordStarted()
+                mediaRecorderState = MediaRecorderState.RECORDING
 
-            mediaRecorderState = MediaRecorderState.RECORDING
+                initialMediaRecorderForAudio(it)
 
-            initialMediaRecorderForAudio(saveFile)
-
-            return saveFile
+                return
+            }
         }.onFailure {
             release()
             Log.e(TAG, "startAudioRecording: Failed to start audio recording: ${it.message}", it)
@@ -223,7 +224,26 @@ class AudioMediaRecorder(
     }
 
     override fun stopRecording(): RecordResult {
-        TODO("Not yet implemented")
+        if(mediaRecorder == null) {
+            return RecordResult(
+                success = false,
+                errorMessage = "MediaRecorder is not initialized."
+            )
+        }
+
+        return runCatching {
+            mediaRecorder?.stop()
+            val calcuAudioDuration = recordingStartTime?.let {
+                System.currentTimeMillis() - it
+            }
+            val recordedFile = recordingFile
+        }.getOrElse { err ->
+            Log.e(TAG, "stopRecording: Failed to stop audio recording: ${err.message}", err)
+            RecordResult(
+                success = false,
+                errorMessage = "Failed to stop recording: ${err.message}"
+            )
+        }
     }
 
     /**
@@ -256,6 +276,24 @@ class AudioMediaRecorder(
                 what = what,
                 extra = extra
             )
+        }
+    }
+
+    private fun getAudioDuration(file: File?): Long {
+        file ?: return 0
+        // Use MediaMetadataRetriever to get the duration of the audio file
+        val mediaRetriever: MediaMetadataRetriever = MediaMetadataRetriever()
+        try {
+            mediaRetriever.setDataSource(file.toURI().toString())
+            val durationStr = mediaRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+            val duration = durationStr?.toLongOrNull() ?: 0L
+            try {
+                mediaRetriever.release()
+            } catch (_: Throwable) {}
+            return duration
+        } catch (e: Exception) {
+            Log.e(TAG, "getAudioDuration: Failed to set data source: ${e.message}", e)
+            return 0
         }
     }
 
