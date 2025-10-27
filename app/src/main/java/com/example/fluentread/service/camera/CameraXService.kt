@@ -8,15 +8,10 @@ import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.*
-import com.example.fluentread.utils.launchWithMutex
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.sync.Mutex
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import kotlin.coroutines.suspendCoroutine
 
 object CameraXService : LifecycleOwner {
 
@@ -39,7 +34,6 @@ object CameraXService : LifecycleOwner {
 
     private val _events = MutableSharedFlow<CameraServiceListener>()
     val events: SharedFlow<CameraServiceListener> = _events.asSharedFlow()
-    private val mutex: Mutex = Mutex()
 
     private fun post(event: CameraServiceListener) = scope.launch { _events.emit(event) }
     //endregion
@@ -65,19 +59,27 @@ object CameraXService : LifecycleOwner {
             return
         }
 
-        scope.launchWithMutex(mutex) {
-            lifecycleRegistry.currentState = Lifecycle.State.RESUMED
-            Log.d(TAG, "Starting CameraX...")
+        lifecycleRegistry.currentState = Lifecycle.State.RESUMED
 
-            runCatching {
-                val provider = context.getCameraProvider()
-                cameraProvider = provider
-                bindUseCase(provider)
-                post(CameraServiceListener.OnCameraOpened)
-            }.onFailure {
-                Log.e(TAG, "Failed to start CameraX: ${it.message}", it)
-                post(CameraServiceListener.OnCameraError(it.message ?: "Unknown error"))
-            }
+        Log.d(TAG, "Starting CameraX...")
+
+        runCatching {
+            val future = ProcessCameraProvider.getInstance(context)
+            future.addListener(
+                {
+                   runCatching {
+                       cameraProvider = future.get()
+                       bindUseCase(cameraProvider)
+                       post(CameraServiceListener.OnCameraOpened)
+                   }.onFailure {
+                       Log.e(TAG, "Error during CameraX start: ${it.message}", it)
+                   }
+                },
+                ContextCompat.getMainExecutor(context)
+            )
+        }.onFailure {
+            Log.e(TAG, "Failed to start CameraX: ${it.message}", it)
+            post(CameraServiceListener.OnCameraError(it.message ?: "Unknown error"))
         }
     }
 
@@ -115,7 +117,12 @@ object CameraXService : LifecycleOwner {
     //endregion
 
     //region === Camera Binding & Analyzer ===
-    private fun bindUseCase(provider: ProcessCameraProvider) {
+    private fun bindUseCase(provider: ProcessCameraProvider?) {
+        if(provider == null) {
+            Log.e(TAG, "Camera provider is null, cannot bind use case.")
+            post(CameraServiceListener.OnCameraError("Camera provider is null"))
+            return
+        }
         val executor = cameraExecutor ?: return
         val selector = CameraSelector.DEFAULT_FRONT_CAMERA
 
@@ -124,8 +131,8 @@ object CameraXService : LifecycleOwner {
         val analyzer = ImageAnalysis.Builder()
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
-            .apply {
-                setAnalyzer(executor, FaceAnalyzer())
+            .also {
+                it.setAnalyzer(executor, FaceAnalyzer())
             }
 
         runCatching {
@@ -134,6 +141,7 @@ object CameraXService : LifecycleOwner {
             }
             provider.bindToLifecycle(this, selector, analyzer)
             isRunning = true
+            post(CameraServiceListener.OnCameraOpened)
         }.onFailure {
             Log.e(TAG, "Failed to bind use case: ${it.message}", it)
             post(CameraServiceListener.OnCameraError(it.message ?: "Binding error"))
@@ -168,14 +176,3 @@ object CameraXService : LifecycleOwner {
     }
     //endregion
 }
-
-//region === Extension Utilities ===
-private suspend fun Context.getCameraProvider(): ProcessCameraProvider =
-    suspendCoroutine { cont ->
-        val future = ProcessCameraProvider.getInstance(this)
-        future.addListener({
-            runCatching { cont.resume(future.get()) }
-                .onFailure { cont.resumeWithException(it) }
-        }, ContextCompat.getMainExecutor(this))
-    }
-//endregion

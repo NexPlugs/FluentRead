@@ -64,13 +64,13 @@ fun EnablePermissionRoute(
     LaunchedEffect(windowInfo) {
         snapshotFlow { windowInfo.isWindowFocused }.collect { isWindowFocused ->
             if (isWindowFocused) {
-                onboardingViewModel.funGetPermissionGranted(context)
+                onboardingViewModel.funGetPermissionGranted()
             }
         }
     }
 
     LaunchedEffect(true) {
-        onboardingViewModel.funGetPermissionGranted(context)
+        onboardingViewModel.funGetPermissionGranted()
     }
 
     EnablePermissionScreen(

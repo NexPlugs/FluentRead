@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fluentread.permissions.AppPermissions
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,7 +31,9 @@ data class OnboardingUiState(
  * @property appPermissions Instance of [AppPermissions] to handle permission-related tasks.
  */
 @HiltViewModel
-class OnboardingViewModel @Inject constructor(): ViewModel() {
+class OnboardingViewModel @Inject constructor(
+    @ApplicationContext val context: Context
+): ViewModel() {
     private val appPermissions: AppPermissions = AppPermissions.getInstance()
 
     // Backing property to avoid state updates from other classes.
@@ -40,9 +43,8 @@ class OnboardingViewModel @Inject constructor(): ViewModel() {
     /**
      * Function to check and update the permission states.
      *
-     * @param context The context to use for checking permissions.
      */
-    fun funGetPermissionGranted(context: Context) {
+    fun funGetPermissionGranted() {
         viewModelScope.launch {
             val isAccessibilityGranted = appPermissions.isAccessibilityPermissionGranted(context)
             val isCameraPermissionGranted = appPermissions.isCameraPermissionGranted(context)

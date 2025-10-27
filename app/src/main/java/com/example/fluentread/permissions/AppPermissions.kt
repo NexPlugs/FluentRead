@@ -181,6 +181,7 @@ class AppPermissions {
             context.contentResolver,
            Settings.Secure.ACCESSIBILITY_ENABLED, 0
         )
+
         return accessibilityEnabled == 1
     }
 

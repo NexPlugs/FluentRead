@@ -45,13 +45,13 @@ fun SettingRoute(
     LaunchedEffect(windowInfo) {
         snapshotFlow { windowInfo.isWindowFocused }.collect { isWindowFocused ->
             if (isWindowFocused) {
-                viewModel.isAccessibilityPermissionGranted()
+                viewModel.refreshServiceStatus()
             }
         }
     }
 
     LaunchedEffect(true) {
-        viewModel.isAccessibilityPermissionGranted()
+        viewModel.refreshServiceStatus()
     }
 
 
@@ -92,7 +92,9 @@ private fun SettingScreen(
         modifier = modifier,
         topBar = {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(
+                    top = 32.dp
+                ),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Start
             ) {
