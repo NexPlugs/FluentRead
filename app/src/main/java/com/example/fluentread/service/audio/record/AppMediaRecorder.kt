@@ -1,4 +1,4 @@
-package com.example.fluentread.service.audio
+package com.example.fluentread.service.audio.record
 
 import com.example.fluentread.service.audio.models.RecordResult
 import java.io.File

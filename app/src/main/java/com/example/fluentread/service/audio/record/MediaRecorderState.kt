@@ -1,4 +1,4 @@
-package com.example.fluentread.service.audio
+package com.example.fluentread.service.audio.record
 
 /**
  * Represents the various states of a media recorder.

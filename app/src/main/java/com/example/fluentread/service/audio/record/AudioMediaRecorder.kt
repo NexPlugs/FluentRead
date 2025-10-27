@@ -1,4 +1,4 @@
-package com.example.fluentread.service.audio
+package com.example.fluentread.service.audio.record
 
 import android.content.Context
 import android.media.MediaMetadataRetriever
