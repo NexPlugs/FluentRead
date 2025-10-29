@@ -1,6 +1,21 @@
 package com.example.fluentread.service.audio.player
 
+import android.media.MediaPlayer
+import android.util.Log
 import java.io.IOException
+
+enum class CoreMediaState {
+    IDLE,
+    INITIALIZED,
+    PREPARING,
+    PREPARED,
+    STARTED,
+    PAUSED,
+    STOPPED,
+    COMPLETED,
+    END,
+    ERROR
+}
 
 interface CoreMediaPlayer {
     companion object {
@@ -65,6 +80,11 @@ interface CoreMediaPlayer {
     val currentPosition: Int
 
     /**
+     * Gets the current state of the media player.
+     */
+    var state: CoreMediaState
+
+    /**
      * Gets the total duration of the media in milliseconds.
      */
     val duration: Int
@@ -123,47 +143,158 @@ interface CoreMediaPlayer {
     /**
      * Sets a listener for error events during playback.
      */
-    fun setOnErrorListener(listener: (Int, Int) -> Unit): Unit
+    fun setOnErrorListener(listener: (Int, Int) -> Boolean): Unit
+
+    /**
+     * Sets a listener for completion events during playback.
+     */
+    fun setOnCompletionListener(listener: () -> Unit): Unit
+
+    /**
+     * Sets a listener for prepared events during playback.
+     */
+    fun setOnPreparedListener(listener: () -> Unit): Unit
 }
 
-class CoreMediaPlayerImpl : CoreMediaPlayer {
+
+class CoreMediaPlayerImpl(
+    val mediaBuilder: () -> MediaPlayer
+) : CoreMediaPlayer {
+
+    companion object {
+        private const val TAG = "CoreMediaPlayerImpl"
+    }
+
+    private var _mediaPlayer: MediaPlayer? = null
+
+    private val mediaPlayer: MediaPlayer get () {
+        if (_mediaPlayer == null) {
+            Log.d(TAG, "Initializing MediaPlayer instance.")
+            _mediaPlayer = mediaBuilder().setListeners()
+        }
+        return _mediaPlayer!!
+    }
+
     override var speed: Float
-        get() = TODO("Not yet implemented")
-        set(value) {}
+        get() = mediaPlayer.playbackParams.speed
+        set(value) {
+            mediaPlayer.playbackParams = mediaPlayer.playbackParams.setSpeed(value)
+        }
+
     override val currentPosition: Int
-        get() = TODO("Not yet implemented")
+        get() = mediaPlayer.currentPosition
+
     override val duration: Int
-        get() = TODO("Not yet implemented")
+        get() = mediaPlayer.duration
 
+    override var state: CoreMediaState = CoreMediaState.END
+        get() {
+            // Note: MediaPlayer does not provide a direct way to get its state.
+            // This is a simplified approximation based on common states.
+            return when {
+                !mediaPlayer.isPlaying && mediaPlayer.currentPosition == 0 -> CoreMediaState.IDLE
+                mediaPlayer.isPlaying -> CoreMediaState.STARTED
+                else -> CoreMediaState.PAUSED
+            }
+        }
+        set(value) {
+            Log.d(TAG, "Setting media player state to: $value")
+            field = value
+        }
+
+    private var onErrorListener: ((what: Int, extra: Int) -> Boolean)? = null
+    private var onCompletionListener: (() -> Unit)? = null
+    private var onPreparedListener: (() -> Unit)? = null
+
+    @Throws(
+        IllegalStateException::class,
+        IOException::class,
+        SecurityException::class
+    )
     override fun setSource(srcUrl: String) {
-        TODO("Not yet implemented")
+        Log.d(TAG, "Setting media source to: $srcUrl")
+        mediaPlayer.setDataSource(srcUrl)
+        state = CoreMediaState.INITIALIZED
     }
 
+    @Throws(IllegalStateException::class, IOException::class)
     override fun prepare() {
-        TODO("Not yet implemented")
+        Log.d(TAG, "Preparing media player.")
+        mediaPlayer.prepare()
+        state = CoreMediaState.PREPARED
     }
 
+    @Throws(IllegalStateException::class)
     override fun seekTo(position: Long) {
-        TODO("Not yet implemented")
+        Log.d(TAG, "Seeking to position: $position ms")
+        mediaPlayer.seekTo(position.toInt())
+
     }
 
+    @Throws(IllegalStateException::class)
     override fun start() {
-        TODO("Not yet implemented")
+        Log.d(TAG, "Starting media playback.")
+        mediaPlayer.start()
+        state = CoreMediaState.STARTED
     }
 
+    @Throws(IllegalStateException::class)
     override fun pause() {
-        TODO("Not yet implemented")
+        Log.d(TAG, "Pausing media playback.")
+        mediaPlayer.pause()
+        state = CoreMediaState.PAUSED
     }
 
+    @Throws(IllegalStateException::class)
     override fun stop() {
-        TODO("Not yet implemented")
+        Log.d(TAG, "Stopping media playback.")
+        mediaPlayer.stop()
+        state = CoreMediaState.STOPPED
     }
 
     override fun release() {
-        TODO("Not yet implemented")
+        Log.d(TAG, "Releasing media player resources.")
+        mediaPlayer.clearAllListener().release()
+        _mediaPlayer = null
+        state = CoreMediaState.END
     }
 
-    override fun setOnErrorListener(listener: (Int, Int) -> Unit) {
-        TODO("Not yet implemented")
+    override fun setOnErrorListener(listener: (Int, Int) -> Boolean) {
+        this.onErrorListener = listener
+    }
+
+    override fun setOnCompletionListener(listener: () -> Unit) {
+        this.onCompletionListener = listener
+    }
+
+    override fun setOnPreparedListener(listener: () -> Unit) {
+        this.onPreparedListener = listener
+    }
+
+    // --- Private Helpers ---
+    /**
+     * Sets up the MediaPlayer listeners for error, prepared, and completion events.
+     */
+    private fun MediaPlayer.setListeners(): MediaPlayer {
+        setOnErrorListener { _, what, extra ->
+            onErrorListener?.invoke(what, extra) == true
+        }
+        setOnPreparedListener {
+            onPreparedListener?.invoke()
+        }
+        setOnCompletionListener {
+            onCompletionListener?.invoke()
+        }
+        return this
+    }
+
+    /**
+     * Clears all listeners from the MediaPlayer to prevent memory leaks.
+     */
+    private fun MediaPlayer.clearAllListener(): MediaPlayer {
+        setOnErrorListener(null)
+        setOnPreparedListener(null)
+        setOnCompletionListener(null)
+        return this
     }
 }
