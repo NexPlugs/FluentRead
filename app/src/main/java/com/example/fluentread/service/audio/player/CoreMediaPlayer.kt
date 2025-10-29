@@ -139,6 +139,11 @@ interface CoreMediaPlayer {
      */
     fun release(): Unit
 
+    /**
+     * Resets the media player to its uninitialized state.
+     */
+    fun reset(): Unit
+
 
     /**
      * Sets a listener for error events during playback.
@@ -254,9 +259,14 @@ class CoreMediaPlayerImpl(
 
     override fun release() {
         Log.d(TAG, "Releasing media player resources.")
-        mediaPlayer.clearAllListener().release()
-        _mediaPlayer = null
-        state = CoreMediaState.END
+        mediaPlayer.release()
+        state = CoreMediaState.IDLE
+    }
+
+    override fun reset() {
+        Log.d(TAG, "Resetting media player.")
+        mediaPlayer.clearAllListener().reset()
+        state = CoreMediaState.IDLE
     }
 
     override fun setOnErrorListener(listener: (Int, Int) -> Boolean) {
