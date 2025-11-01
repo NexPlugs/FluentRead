@@ -10,4 +10,5 @@ enum class AudioState {
     PAUSED,
     STOPPED,
     COMPLETED,
+    UNSET
 }

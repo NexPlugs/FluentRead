@@ -68,6 +68,13 @@ interface CoreMediaPlayer {
     }
 
     /**
+     * Checks if the media player supports seeking.
+     * @return True if the media player is seekable, false otherwise.
+     */
+    fun isSeekable(): Boolean
+
+
+    /**
      * Gets or sets the playback speed of the media player.
      * @throws IllegalStateException if the media player is not in a valid state to get or set the speed.
      */
@@ -109,6 +116,14 @@ interface CoreMediaPlayer {
     @Throws(IllegalStateException::class, IOException::class)
     fun prepare(): Unit
 
+
+    /**
+     * Prepares the media player for playback asynchronously.
+     *
+     * after setting the data source and displaying the media. call this method to prepare the player for playback.
+     */
+    @Throws(IllegalStateException::class)
+    fun prepareSync(): Unit
 
     /**
      * Starts or resumes playback of the media.
@@ -192,6 +207,16 @@ class CoreMediaPlayerImpl(
     override val duration: Int
         get() = mediaPlayer.duration
 
+    override fun isSeekable(): Boolean {
+        return when(state) {
+            CoreMediaState.PREPARED,
+            CoreMediaState.STARTED,
+            CoreMediaState.PAUSED,
+            CoreMediaState.COMPLETED -> true
+            else -> false
+        }
+    }
+
     override var state: CoreMediaState = CoreMediaState.END
         get() {
             // Note: MediaPlayer does not provide a direct way to get its state.
@@ -227,6 +252,13 @@ class CoreMediaPlayerImpl(
         Log.d(TAG, "Preparing media player.")
         mediaPlayer.prepare()
         state = CoreMediaState.PREPARED
+    }
+
+    @Throws(IllegalStateException::class)
+    override fun prepareSync() {
+        Log.d(TAG, "Preparing media player asynchronously.")
+        mediaPlayer.prepareAsync()
+        state = CoreMediaState.PREPARING
     }
 
     @Throws(IllegalStateException::class)

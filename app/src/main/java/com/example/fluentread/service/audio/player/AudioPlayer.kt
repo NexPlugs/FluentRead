@@ -30,7 +30,7 @@ interface AudioPlayer {
      * @param hashTrack The identifier of the audio track.
      * @param progressChange A lambda function that receives progress information.
      */
-    fun onProgressChange(hashTrack: Int, progressChange: (ProgressInfo) -> Unit)
+    fun onProgressChange(hashTrack: Int, progressChange: ProgressInfo)
 
     /**
      * Registers a listener for speed changes of the audio track.
@@ -60,6 +60,11 @@ interface AudioPlayer {
     fun clearTrack(hashTrack: Int)
 
     /**
+     * Prepares the audio track for playback.
+     */
+    fun prepare(srcUrl: String, hashTrack: Int)
+
+    /**
      * Pauses audio playback.
      */
     fun pause()
@@ -67,7 +72,7 @@ interface AudioPlayer {
     /**
      * Resumes audio playback.
      */
-    fun resume()
+    fun resume(hasTrack: Int)
 
     /**
      * Stops audio playback.
@@ -75,10 +80,11 @@ interface AudioPlayer {
     fun stop()
 
     /**
-     * Sets the playback speed.
-     * @param speed The desired playback speed.
+     * Seeks to a specific position in the audio track.
+     * @param position The position to seek to (in milliseconds).
+     * @param hashTrack The identifier of the audio track.
      */
-    fun seekTo(position: Long)
+    fun seekTo(position: Long, hashTrack: Int)
 
     /**
      * Get the current playback speed.
@@ -97,9 +103,31 @@ interface AudioPlayer {
 
     /**
      * Removes audio tracks corresponding to the provided list of identifiers.
-     * @param hashList A list of audio track identifiers to be removed.
+     * @param audioHash The identifier of the audio track to be removed.
      */
-    fun removeAudios(hashList: List<Int>)
+    fun removeAudio(audioHash: Int)
+
+    /**
+     * Removes audio tracks corresponding to the provided list of identifiers.
+     * @param audioHashList The list of identifiers of the audio tracks to be removed.
+     */
+    fun removeListAudio(audioHashList: List<Int>)
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
