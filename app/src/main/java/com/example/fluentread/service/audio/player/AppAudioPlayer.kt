@@ -7,133 +7,79 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-/**
- * Data class representing information about an audio track.
- */
+/** Data class representing information about an audio track. */
 data class TrackInfo(
     val srcUrl: String,
     val hashTrack: Int,
     val startPosition: Int = 0,
 )
 
-/**
- * Implementation of AudioPlayer for the FluentRead application.
- */
+/** Implementation of AudioPlayer for the FluentRead application. */
 class AppAudioPlayer(
     val audioSpeed: Float? = null,
     val autoPlay: Boolean = true,
     val audioScope: CoroutineScope,
     private val coreMediaPlayer: CoreMediaPlayer,
-): AudioPlayer {
+) : AudioPlayer {
     companion object {
         private const val TAG = "AppAudioPlayer"
-
-        /**
-         * Speed values for audio playback.
-         */
         private const val DEFAULT_SPEED = 1.0f
         private const val MAX_SPEED = 3.0f
         private const val SPEED_INCREMENT = 0.25f
     }
 
-    /**
-     * Map of state change listeners for audio tracks.
-     */
-    private val stateListeners: MutableMap<Int, (AudioState) -> Unit> = mutableMapOf()
+    private val stateListeners = mutableMapOf<Int, (AudioState) -> Unit>()
+    private val progressListeners = mutableMapOf<Int, (ProgressInfo) -> Unit>()
+    private val speedListeners = mutableMapOf<Int, (Float) -> Unit>()
+    private val seek = mutableMapOf<Int, Int>()
+    private val registeredTracks = mutableMapOf<Int, TrackInfo>()
 
-    /**
-     * Map of progress change listeners for audio tracks.
-     */
-    private val progressListeners: MutableMap<Int, (ProgressInfo) -> Unit> = mutableMapOf()
-
-    /**
-     * Map of speed change listeners for audio tracks.
-     */
-    private val speedListeners: MutableMap<Int, (Float) -> Unit> = mutableMapOf()
-
-    /**
-     * Map of seek positions for audio tracks.
-     */
-    private val seek: MutableMap<Int, Int> = mutableMapOf()
-
-    /**
-     * Map of registered audio tracks.
-     */
-    private val registeredTracks: MutableMap<Int, TrackInfo> = mutableMapOf()
-
-    // Internal state variables
     private var playerState: AudioState = AudioState.UNSET
-
-    // Currently playing audio track identifier
     private var currentAudioHash: Int = -1
 
     override val currentState: AudioState get() = playerState
-
     override val currentPlayId: Int get() = currentAudioHash
 
-    override fun onAudioStateChange(
-        hashTrack: Int,
-        stateChange: (AudioState) -> Unit
-    ) {
+    override fun onAudioStateChange(hashTrack: Int, stateChange: (AudioState) -> Unit) {
         Log.v(TAG, "Registering state change listener for track: $hashTrack")
-        // Register the state change listener
         stateListeners[hashTrack] = stateChange
     }
 
-    override fun onProgressChange(
-        hashTrack: Int,
-        progressChange: ProgressInfo
-    ) {
+    override fun onProgressChange(hashTrack: Int, progressChange: ProgressInfo) {
         Log.v(TAG, "Registering progress change listener for track: $hashTrack")
-        // Register the progress change listener
         progressListeners[hashTrack] = { progressChange }
     }
 
     override fun onSpeedChange(hashTrack: Int, speedChange: (Float) -> Unit) {
         Log.v(TAG, "Registering speed change listener for track: $hashTrack")
-        // Register the speed change listener
         speedListeners[hashTrack] = speedChange
     }
 
-
-    override fun registerTrack(
-        srcUrl: String,
-        hashTrack: Int,
-        startPosition: Int
-    ) {
+    override fun registerTrack(srcUrl: String, hashTrack: Int, startPosition: Int) {
         Log.d(TAG, "Registering track: $hashTrack with source: $srcUrl at position: $startPosition")
-        // Store the track information
-        if(registeredTracks.containsKey(hashTrack)) {
+        if (registeredTracks.containsKey(hashTrack)) {
             Log.w(TAG, "Track $hashTrack is already registered. Overwriting existing track.")
             return
         }
-        registeredTracks[hashTrack] = TrackInfo(
-            srcUrl = srcUrl,
-            hashTrack = hashTrack,
-            startPosition = startPosition
-        )
+        registeredTracks[hashTrack] = TrackInfo(srcUrl, hashTrack, startPosition)
     }
 
     override fun clearTrack(hashTrack: Int) {
         Log.d(TAG, "Clearing track: $hashTrack")
-        // Remove the track information and listeners
         registeredTracks.remove(hashTrack)
         stateListeners.remove(hashTrack)
         progressListeners.remove(hashTrack)
         speedListeners.remove(hashTrack)
     }
 
-
     override fun play(srcUrl: String, hashTrack: Int) {
-        // if hashTrack is different from current track, set new audio
-        if(hashTrack != currentAudioHash) {
+        if (hashTrack != currentAudioHash) {
             Log.d(TAG, "Playing track: $hashTrack from source: $srcUrl")
             currentAudioHash = hashTrack
             setAudio(srcUrl, hashTrack, true)
             return
         }
-        // Tracking current player state then decide action
-        when(playerState) {
+        when (playerState) {
             AudioState.PAUSED -> {
                 Log.d(TAG, "Resuming playback for track: $hashTrack")
                 start()
@@ -150,16 +96,14 @@ class AppAudioPlayer(
 
     override fun prepare(srcUrl: String, hashTrack: Int) {
         Log.d(TAG, "Preparing track: $hashTrack from source: $srcUrl")
-        if(hashTrack ==  currentAudioHash) return
-
+        if (hashTrack == currentAudioHash) return
         resetMediaPlayer()
         setAudio(srcUrl, hashTrack)
     }
 
-
     override fun pause() {
         Log.d(TAG, "Pausing playback for track: $currentAudioHash")
-        if(playerState != AudioState.PLAYING) {
+        if (playerState != AudioState.PLAYING) {
             Log.w(TAG, "Cannot pause. Player is not in PLAYING state.")
             return
         }
@@ -171,11 +115,11 @@ class AppAudioPlayer(
 
     override fun resume(hashTrack: Int) {
         Log.d(TAG, "Resuming playback for track: $currentAudioHash")
-        if(currentAudioHash != hashTrack) {
+        if (currentAudioHash != hashTrack) {
             Log.w(TAG, "Cannot resume. Current track $currentAudioHash does not match requested track $hashTrack.")
             return
         }
-        if(playerState != AudioState.PAUSED && playerState != AudioState.IDLE) {
+        if (playerState != AudioState.PAUSED && playerState != AudioState.IDLE) {
             Log.w(TAG, "Cannot resume. Player is not in PAUSED state.")
             return
         }
@@ -184,24 +128,21 @@ class AppAudioPlayer(
 
     override fun stop() {
         Log.d(TAG, "Stopping playback for track: $currentAudioHash")
-        /// Like pause function
+        // TODO: Implement stop logic if needed
     }
 
     override fun seekTo(position: Long, hasTrack: Int) {
         Log.d(TAG, "Seeking to position: $position ms for track: $currentAudioHash")
-        if(currentAudioHash != hasTrack) return
-
+        if (currentAudioHash != hasTrack) return
         seek[hasTrack] = position.toInt()
-        if(coreMediaPlayer.isSeekable()) {
+        if (coreMediaPlayer.isSeekable()) {
             coreMediaPlayer.seekTo(position)
         }
     }
 
     override fun currentSpeed(): Float = coreMediaPlayer.speed
 
-    override fun currentProgress(): Long {
-        return coreMediaPlayer.currentPosition.toLong()
-    }
+    override fun currentProgress(): Long = coreMediaPlayer.currentPosition.toLong()
 
     override fun dispose() {
         audioScope.launch(Dispatchers.Main) {
@@ -227,96 +168,60 @@ class AppAudioPlayer(
 
     override fun removeListAudio(audioHashList: List<Int>) {
         Log.d(TAG, "Removing audio tracks: $audioHashList")
-        audioHashList.forEach { hash ->
-            removeAudio(hash)
-        }
+        audioHashList.forEach { hash -> removeAudio(hash) }
     }
 
-    /**
-     * Starts audio playback.
-     * Assumes the media player is prepared.
-     */
+    /** Starts audio playback. Assumes the media player is prepared. */
     private fun start() {
         val currentPosition = coreMediaPlayer.currentPosition
-
         Log.d(TAG, "Current player state: $playerState for track: $currentAudioHash")
-
-
-        if(playerState == AudioState.PAUSED || playerState == AudioState.IDLE) {
-
+        if (playerState == AudioState.PAUSED || playerState == AudioState.IDLE) {
             val seekTo = seek[currentAudioHash] ?: 0
             val duration = coreMediaPlayer.duration
-            if(seekTo in 1 until duration) {
+            if (seekTo in 1 until duration) {
                 Log.d(TAG, "Seeking to position: $seekTo ms after starting playback.")
                 coreMediaPlayer.seekTo(seekTo.toLong())
                 playerState = AudioState.PLAYING
                 notifyStateChange(currentAudioHash, playerState)
-
                 coreMediaPlayer.start()
-
             } else {
                 Log.d(TAG, "No valid seek position found. Continuing from current position: $currentPosition ms.")
                 val progressInfo = ProgressInfo(
                     currentPosition = currentPosition.toLong(),
                     duration = duration.toLong()
                 )
-
-                onProgressChange(
-                    hashTrack = currentAudioHash,
-                    progressChange = progressInfo
-                )
+                onProgressChange(currentAudioHash, progressInfo)
                 onComplete(currentAudioHash)
             }
-
         }
     }
 
-
-    /**
-     * Handles media player preparation completion.
-     * @param hasTrack The identifier of the audio track.
-     * @param autoPlay Whether to start playback automatically after preparation.
-     */
+    /** Handles media player preparation completion. */
     private fun onPrepared(hasTrack: Int, autoPlay: Boolean) {
         Log.d(TAG, "Media player prepared for track: $hasTrack. AutoPlay: $autoPlay")
         playerState = AudioState.IDLE
         notifyStateChange(hasTrack, playerState)
-
-        if(autoPlay) {
-            start()
-        }
+        if (autoPlay) start()
     }
 
-    /**
-     * Resets the media player to its initial state.
-     * Reset all listener and reset the player
-     */
+    /** Resets the media player to its initial state. */
     private fun resetMediaPlayer() {
         Log.d(TAG, "Resetting media player.")
         coreMediaPlayer.reset()
         playerState = AudioState.UNSET
-        if(currentAudioHash != - 1) {
+        if (currentAudioHash != -1) {
             notifyStateChange(currentAudioHash, AudioState.UNSET)
             currentAudioHash = -1
         }
     }
 
-    /**
-     * Sets the audio source for playback.
-     * @param srcUrl The source URL of the audio track.
-     * @param hash The identifier of the audio track.
-     * @param autoPlay Whether to start playback automatically after setting the source.
-     */
-    private  fun setAudio(srcUrl: String, hash: Int, autoPlay: Boolean = true) {
+    /** Sets the audio source for playback. */
+    private fun setAudio(srcUrl: String, hash: Int, autoPlay: Boolean = true) {
         Log.d(TAG, "Setting audio source: $srcUrl for track: $hash with autoPlay: $autoPlay")
-
         currentAudioHash = hash
-
         try {
             coreMediaPlayer.run {
-                setOnPreparedListener {
-                    onPrepared(hash, autoPlay)
-                }
+                setOnPreparedListener { onPrepared(hash, autoPlay) }
                 setOnCompletionListener { complete(hash) }
                 setOnErrorListener { _, _ ->
                     Log.e(TAG, "Media player error for track: $hash")
@@ -324,7 +229,6 @@ class AppAudioPlayer(
                 }
                 playerState = AudioState.PREPARING
                 notifyStateChange(hash, playerState)
-
                 setSource(srcUrl)
                 prepareSync()
             }
@@ -334,56 +238,23 @@ class AppAudioPlayer(
         }
     }
 
-    /**
-     * Notifies registered listeners about a state change for a specific track.
-     */
+    /** Notifies registered listeners about a state change for a specific track. */
     private fun notifyStateChange(hashTrack: Int, newState: AudioState) {
         stateListeners[hashTrack]?.invoke(newState)
     }
 
-    /**
-     * Handles audio playback completion.
-     */
+    /** Handles audio playback completion. */
     private fun onComplete(hashTrack: Int) {
         Log.d(TAG, "Audio playback completed for track: $currentAudioHash")
-        audioScope.launch {
-            complete(hashTrack)
-        }
+        audioScope.launch { complete(hashTrack) }
     }
 
-    /**
-     * Completes the audio playback for a specific track.
-     */
+    /** Completes the audio playback for a specific track. */
     private fun complete(hashTrack: Int) {
         Log.d(TAG, "Audio track $hashTrack marked as completed.")
-
-
         onProgressChange(hashTrack, ProgressInfo(0, 0))
-
         playerState = AudioState.COMPLETED
         notifyStateChange(hashTrack, playerState)
-
         seek[hashTrack] = 0
-
     }
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
