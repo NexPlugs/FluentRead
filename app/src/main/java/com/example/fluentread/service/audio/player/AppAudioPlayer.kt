@@ -16,6 +16,10 @@ data class TrackInfo(
 
 /** Implementation of AudioPlayer for the FluentRead application. */
 class AppAudioPlayer(
+    val speed: Float? = null,
+    val maxSpeed: Float? = null,
+    val speedChange: Float? = null,
+
     val audioSpeed: Float? = null,
     val autoPlay: Boolean = true,
     val audioScope: CoroutineScope,
@@ -25,7 +29,7 @@ class AppAudioPlayer(
         private const val TAG = "AppAudioPlayer"
         private const val DEFAULT_SPEED = 1.0f
         private const val MAX_SPEED = 3.0f
-        private const val SPEED_INCREMENT = 0.25f
+        private const val SPEED_CHANGE = 0.25f
     }
 
     private val stateListeners = mutableMapOf<Int, (AudioState) -> Unit>()
@@ -34,8 +38,24 @@ class AppAudioPlayer(
     private val seek = mutableMapOf<Int, Int>()
     private val registeredTracks = mutableMapOf<Int, TrackInfo>()
 
+    private var currentSpeed: Float = DEFAULT_SPEED
+        get() = speed ?: audioSpeed ?: DEFAULT_SPEED
+        set(value)  {
+            if(value != field) {
+                field = value
+                onSpeedChange(currentAudioHash) { value }
+            }
+        }
+
+    private val maximumSpeed: Float
+        get() = maxSpeed ?: MAX_SPEED
+
+    private val speedStep: Float
+        get() = speedChange ?: SPEED_CHANGE
+
     private var playerState: AudioState = AudioState.UNSET
     private var currentAudioHash: Int = -1
+
 
     override val currentState: AudioState get() = playerState
     override val currentPlayId: Int get() = currentAudioHash
@@ -92,6 +112,32 @@ class AppAudioPlayer(
                 Log.d(TAG, "Starting playback for track: $hashTrack")
             }
         }
+    }
+
+    override fun changeSpeed(isIncrease: Boolean) {
+        Log.d(TAG, "Changing speed. Increase: $isIncrease")
+        if(!coreMediaPlayer.isSpeedChangeSupported()) {
+            Log.w(TAG, "Speed change not supported in current state: $playerState")
+            return
+        }
+        if(currentSpeed > maximumSpeed || currentSpeed < 0f) {
+            Log.w(TAG, "Current speed $currentSpeed is out of bounds. Resetting to default.")
+            coreMediaPlayer.speed = DEFAULT_SPEED
+            return
+        }
+        val newSpeed = if (isIncrease) {
+            (currentSpeed + speedStep).coerceAtMost(maximumSpeed)
+        } else {
+            (currentSpeed - speedStep).coerceAtLeast(0f)
+        }
+        if((playerState == AudioState.PLAYING || playerState == AudioState.PREPARED)) {
+            Log.d(TAG, "Speed changed to $newSpeed")
+            currentSpeed = newSpeed
+            if(playerState == AudioState.PLAYING) {
+                coreMediaPlayer.speed = newSpeed
+            }
+        }
+
     }
 
     override fun prepare(srcUrl: String, hashTrack: Int) {
@@ -180,10 +226,17 @@ class AppAudioPlayer(
             val duration = coreMediaPlayer.duration
             if (seekTo in 1 until duration) {
                 Log.d(TAG, "Seeking to position: $seekTo ms after starting playback.")
+
                 coreMediaPlayer.seekTo(seekTo.toLong())
+
+                if(coreMediaPlayer.isSpeedChangeSupported()) {
+                    coreMediaPlayer.speed = currentSpeed
+                }
+
+                coreMediaPlayer.start()
+
                 playerState = AudioState.PLAYING
                 notifyStateChange(currentAudioHash, playerState)
-                coreMediaPlayer.start()
             } else {
                 Log.d(TAG, "No valid seek position found. Continuing from current position: $currentPosition ms.")
                 val progressInfo = ProgressInfo(
@@ -201,7 +254,7 @@ class AppAudioPlayer(
         Log.d(TAG, "Media player prepared for track: $hasTrack. AutoPlay: $autoPlay")
         playerState = AudioState.IDLE
         notifyStateChange(hasTrack, playerState)
-        if (autoPlay) start()
+        if (this.autoPlay) start()
     }
 
     /** Resets the media player to its initial state. */
@@ -227,7 +280,7 @@ class AppAudioPlayer(
                     Log.e(TAG, "Media player error for track: $hash")
                     true
                 }
-                playerState = AudioState.PREPARING
+                playerState = AudioState.PREPARED
                 notifyStateChange(hash, playerState)
                 setSource(srcUrl)
                 prepareSync()

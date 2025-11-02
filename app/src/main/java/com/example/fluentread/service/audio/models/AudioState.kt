@@ -5,7 +5,7 @@ package com.example.fluentread.service.audio.models
  */
 enum class AudioState {
     IDLE,
-    PREPARING,
+    PREPARED,
     PLAYING,
     PAUSED,
     STOPPED,

@@ -91,6 +91,13 @@ interface AudioPlayer {
      */
     fun currentSpeed(): Float
 
+
+    /**
+     * Changes the playback speed.
+     * @param isIncrease If true, increases the speed; if false, decreases the speed.
+     */
+    fun changeSpeed(isIncrease: Boolean)
+
     /**
      * Gets the current playback progress.
      */

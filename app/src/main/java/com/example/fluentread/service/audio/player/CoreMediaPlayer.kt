@@ -73,6 +73,12 @@ interface CoreMediaPlayer {
      */
     fun isSeekable(): Boolean
 
+    /**
+     * Checks if the media player supports changing playback speed.
+     * @return True if speed change is supported, false otherwise.
+     */
+    fun isSpeedChangeSupported(): Boolean
+
 
     /**
      * Gets or sets the playback speed of the media player.
@@ -213,6 +219,16 @@ class CoreMediaPlayerImpl(
             CoreMediaState.STARTED,
             CoreMediaState.PAUSED,
             CoreMediaState.COMPLETED -> true
+            else -> false
+        }
+    }
+
+    override fun isSpeedChangeSupported(): Boolean {
+        return when(state) {
+            CoreMediaState.PREPARED,
+            CoreMediaState.PAUSED,
+            CoreMediaState.IDLE,
+            CoreMediaState.STARTED -> true
             else -> false
         }
     }
