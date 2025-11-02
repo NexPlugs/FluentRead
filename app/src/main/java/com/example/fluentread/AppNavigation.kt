@@ -6,10 +6,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
+import com.example.fluentread.features.audio.AUDIO_NAVIGATION_ROUTE
+import com.example.fluentread.features.audio.audioScreen
 import com.example.fluentread.features.onboarding.ENABLE_PERMISSION_ROUTE
 import com.example.fluentread.features.onboarding.ONBOARDING_ROUTE
 import com.example.fluentread.features.onboarding.enablePermissionScreen
@@ -18,7 +19,6 @@ import com.example.fluentread.features.settings.SETTING_ROUTE
 import com.example.fluentread.features.settings.settingScreen
 import com.example.fluentread.features.splash.SPLASH_ROUTE
 import com.example.fluentread.features.splash.splashScreen
-import com.example.fluentread.service.AppController
 
 /**
  * App Navigation this is the entry point for navigation
@@ -63,10 +63,12 @@ fun AppNavHost(
         }
 
         enablePermissionScreen(modifier) {
-            navController.navigate(SETTING_ROUTE) {
+            navController.navigate(AUDIO_NAVIGATION_ROUTE) {
                 popUpTo(ENABLE_PERMISSION_ROUTE) { inclusive = true }
             }
         }
+
+        audioScreen(modifier)
 
         settingScreen(modifier)
     }

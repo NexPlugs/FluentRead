@@ -110,6 +110,7 @@ class AppAudioPlayer(
             }
             else -> {
                 Log.d(TAG, "Starting playback for track: $hashTrack")
+                start()
             }
         }
     }

@@ -14,7 +14,6 @@ enum class CoreMediaState {
     STOPPED,
     COMPLETED,
     END,
-    ERROR
 }
 
 interface CoreMediaPlayer {
@@ -192,13 +191,17 @@ class CoreMediaPlayerImpl(
     }
 
     private var _mediaPlayer: MediaPlayer? = null
+        set(value) {
+            Log.d(TAG, "Setting MediaPlayer instance.")
+            field = value
+        }
 
     private val mediaPlayer: MediaPlayer get () {
-        if (_mediaPlayer == null) {
-            Log.d(TAG, "Initializing MediaPlayer instance.")
-            _mediaPlayer = mediaBuilder().setListeners()
+        return _mediaPlayer ?: mediaBuilder().also {
+            Log.d(TAG, "Creating new MediaPlayer instance.")
+            _mediaPlayer = it.setListeners()
+            state = CoreMediaState.IDLE
         }
-        return _mediaPlayer!!
     }
 
     override var speed: Float
@@ -247,6 +250,20 @@ class CoreMediaPlayerImpl(
             Log.d(TAG, "Setting media player state to: $value")
             field = value
         }
+    private val _onErrorListener: MediaPlayer.OnErrorListener = MediaPlayer.OnErrorListener {
+        _, what, extra ->
+        onErrorListener?.invoke(what, extra) == true
+    }
+
+    private val _onCompletionListener: MediaPlayer.OnCompletionListener = MediaPlayer.OnCompletionListener {
+        state = CoreMediaState.COMPLETED
+        onCompletionListener?.invoke()
+    }
+
+    private val _onPreparedListener: MediaPlayer.OnPreparedListener = MediaPlayer.OnPreparedListener {
+        state = CoreMediaState.PREPARED
+        onPreparedListener?.invoke()
+    }
 
     private var onErrorListener: ((what: Int, extra: Int) -> Boolean)? = null
     private var onCompletionListener: (() -> Unit)? = null
@@ -258,9 +275,14 @@ class CoreMediaPlayerImpl(
         SecurityException::class
     )
     override fun setSource(srcUrl: String) {
-        Log.d(TAG, "Setting media source to: $srcUrl")
-        mediaPlayer.setDataSource(srcUrl)
-        state = CoreMediaState.INITIALIZED
+        try{
+            Log.d(TAG, "Setting media source to: $srcUrl")
+            mediaPlayer.setDataSource(srcUrl)
+            state = CoreMediaState.INITIALIZED
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting media source: ${e.message}")
+            throw e
+        }
     }
 
     @Throws(IllegalStateException::class, IOException::class)
@@ -272,9 +294,14 @@ class CoreMediaPlayerImpl(
 
     @Throws(IllegalStateException::class)
     override fun prepareSync() {
-        Log.d(TAG, "Preparing media player asynchronously.")
-        mediaPlayer.prepareAsync()
-        state = CoreMediaState.PREPARING
+        runCatching {
+            Log.d(TAG, "Preparing media player asynchronously.")
+            mediaPlayer.prepareAsync()
+            state = CoreMediaState.PREPARING
+        }.onFailure {
+            Log.e(TAG, "Error preparing media player asynchronously: ${it.message}")
+            throw it
+        }
     }
 
     @Throws(IllegalStateException::class)
@@ -334,15 +361,10 @@ class CoreMediaPlayerImpl(
      * Sets up the MediaPlayer listeners for error, prepared, and completion events.
      */
     private fun MediaPlayer.setListeners(): MediaPlayer {
-        setOnErrorListener { _, what, extra ->
-            onErrorListener?.invoke(what, extra) == true
-        }
-        setOnPreparedListener {
-            onPreparedListener?.invoke()
-        }
-        setOnCompletionListener {
-            onCompletionListener?.invoke()
-        }
+        Log.d(TAG, "Setting up MediaPlayer listeners.")
+        setOnErrorListener(_onErrorListener)
+        setOnPreparedListener(_onPreparedListener)
+        setOnCompletionListener(_onCompletionListener)
         return this
     }
 
