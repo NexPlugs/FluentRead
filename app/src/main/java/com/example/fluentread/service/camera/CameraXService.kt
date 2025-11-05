@@ -39,7 +39,7 @@ object CameraXService : LifecycleOwner {
     //endregion
 
     //region === Public Lifecycle Methods ===
-    fun onCreate(context: Context) = runCatching {
+    fun onCreate() = runCatching {
         Log.i(TAG, "Initializing CameraXService...")
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
         cameraExecutor = Executors.newSingleThreadExecutor()

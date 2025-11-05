@@ -9,6 +9,7 @@ import android.provider.Settings
 import android.util.Log
 import android.view.ViewGroup
 import android.widget.ImageView
+import androidx.compose.ui.platform.ComposeView
 import androidx.core.content.ContextCompat
 import com.example.fluentread.R
 import com.example.fluentread.service.AppControllerRepository
@@ -19,6 +20,8 @@ import com.example.fluentread.service.mlk.FaceBehavior
 import com.example.fluentread.service.mlk.FaceDetectorService
 import com.example.fluentread.service.notification.NotificationHelper
 import com.example.fluentread.service.overlay.ToggleView
+import com.example.fluentread.service.overlay.compose.ToggleCompose
+import com.example.fluentread.ui.theme.FluentReadTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -81,7 +84,7 @@ class AppController : Service() {
     override fun onCreate() {
         super.onCreate()
         ensureOverlayPermission()
-        CameraXService.onCreate(applicationContext)
+        CameraXService.onCreate()
         _isInitialized = true
         Log.d(TAG, "Service created.")
     }
@@ -153,7 +156,11 @@ class AppController : Service() {
     private fun createToggle() {
         Log.d(TAG, "createToggle: Creating toggle bubble.")
         toggleView = ToggleView(context = this, startPoint = Point(0, 200)).apply {
-            rootGroup?.addView(createToggleButton())
+            rootGroup?.addView(ComposeView(context).apply {
+                setContent {
+                    FluentReadTheme { ToggleCompose() }
+                }
+            })
         }
     }
 

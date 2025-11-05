@@ -71,11 +71,20 @@ class ToggleView(
         val limitTop = 0
         val limitBottom = (context.resources.displayMetrics.heightPixels - bubbleHeight)
 
+        val limitLeft = 0
+        val limitRight = (context.resources.displayMetrics.widthPixels - bubbleWidth)
+
         // Apply limits to the new point
         if (newPoint.y < limitTop) {
             newPoint.y = limitTop
         } else if (newPoint.y > limitBottom) {
             newPoint.y = limitBottom
+        }
+
+        if (newPoint.x < limitLeft) {
+            newPoint.x = limitLeft
+        } else if (newPoint.x > limitRight) {
+            newPoint.x = limitRight
         }
 
         layoutParams?.x = newPoint.x

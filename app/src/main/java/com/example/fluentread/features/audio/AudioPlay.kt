@@ -34,7 +34,7 @@ fun AudioPlayScreen(
             color = MaterialTheme.colorScheme.primary,
             onPress = {
                 Log.d("TAG", "AudioPlayScreen: Playing audio")
-                controller.setAudioUrl("https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3")
+                controller.setAudioUrl("https://commondatastorage.googleapis.com/codeskulptor-demos/DDR_assets/Kangaroo_MusiQue_-_The_Neverwritten_Role_Playing_Game.mp3")
             }
         ) {
             Text(text = "Set Audio", textAlign = TextAlign.Center)
@@ -49,7 +49,7 @@ fun AudioPlayScreen(
             color = MaterialTheme.colorScheme.primary,
             onPress = {
                 Log.d("TAG", "AudioPlayScreen: Playing audio")
-                controller.play("https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3")
+                controller.play("https://commondatastorage.googleapis.com/codeskulptor-demos/DDR_assets/Kangaroo_MusiQue_-_The_Neverwritten_Role_Playing_Game.mp3")
             }
         ) {
             Text(text = "Set Audio", textAlign = TextAlign.Center)
