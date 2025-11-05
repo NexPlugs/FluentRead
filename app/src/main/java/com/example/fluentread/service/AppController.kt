@@ -20,15 +20,13 @@ import com.example.fluentread.service.mlk.FaceBehavior
 import com.example.fluentread.service.mlk.FaceDetectorService
 import com.example.fluentread.service.notification.NotificationHelper
 import com.example.fluentread.service.overlay.ToggleView
-import com.example.fluentread.service.overlay.compose.ToggleCompose
+import com.example.fluentread.service.overlay.compose.Toggle
 import com.example.fluentread.ui.theme.FluentReadTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -158,7 +156,7 @@ class AppController : Service() {
         toggleView = ToggleView(context = this, startPoint = Point(0, 200)).apply {
             rootGroup?.addView(ComposeView(context).apply {
                 setContent {
-                    FluentReadTheme { ToggleCompose() }
+                    FluentReadTheme { Toggle() }
                 }
             })
         }
