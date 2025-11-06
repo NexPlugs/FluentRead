@@ -15,10 +15,10 @@ import androidx.compose.ui.unit.dp
 import com.example.fluentread.R
 import com.example.fluentread.ui.theme.FluentReadTheme
 
-private val ToggleWidth = 52.dp
-private val ButtonSize = 48.dp
+private val ToggleWidth = 44.dp
+private val ButtonSize = 40.dp
 private val ButtonPadding = 4.dp
-private val ButtonSpacing = 2.dp
+private val ButtonSpacing = 4.dp
 private val IconPadding = 10.dp
 
 /**
@@ -31,13 +31,16 @@ private data class ToggleAction(
 
 
 @Composable
-fun Toggle() {
+fun Toggle(
+    onUp: () -> Unit,
+    onDown: () -> Unit
+) {
     ToggleCompose(
         actions = listOf(
-            ToggleAction(R.drawable.ic_fast_up) { /* TODO: Fast up action */ },
+            ToggleAction(R.drawable.ic_fast_up) { onUp.invoke() },
             ToggleAction(R.drawable.ic_up) { /* TODO: Up action */ },
             ToggleAction(R.drawable.ic_down) { /* TODO: Down action */ },
-            ToggleAction(R.drawable.ic_fast_down) { /* TODO: Fast down action */ }
+            ToggleAction(R.drawable.ic_fast_down) { onDown.invoke() }
         )
     )
 }

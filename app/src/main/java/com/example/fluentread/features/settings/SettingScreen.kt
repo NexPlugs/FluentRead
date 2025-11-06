@@ -1,9 +1,9 @@
 package com.example.fluentread.features.settings
 
+import android.annotation.SuppressLint
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -26,53 +26,41 @@ import com.example.fluentread.features.components.BuildButton
 import com.example.fluentread.features.settings.utils.GeneralAction
 import com.example.fluentread.utils.launchAppController
 
+private val CardShape = RoundedCornerShape(16.dp)
+private val SectionSpacing = 16.dp
+private val FieldPadding = 16.dp
+private val DividerSpacing = 12.dp
+private val ButtonHeight = 52.dp
+
 @Composable
 fun SettingRoute(
     modifier: Modifier = Modifier,
     viewModel: SettingViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
-    // Access the current context if needed
     val context = LocalContext.current
-
-    // Access the current activity if needed
     val activity = LocalActivity.current
-
-    // Access the current window info to check if the window is focused
     val windowInfo = LocalWindowInfo.current
 
     LaunchedEffect(windowInfo) {
         snapshotFlow { windowInfo.isWindowFocused }.collect { isWindowFocused ->
-            if (isWindowFocused) {
-                viewModel.refreshServiceStatus()
-            }
+            if (isWindowFocused) viewModel.refreshServiceStatus()
         }
     }
-
-    LaunchedEffect(true) {
-        viewModel.refreshServiceStatus()
-    }
-
+    LaunchedEffect(true) { viewModel.refreshServiceStatus() }
 
     SettingScreen(
         modifier = modifier,
         uiState = uiState,
-        onEyeTrackingToggled = {
-            if(it) {
-                context.launchAppController()
-            }
-        },
-        onSensitivityChanged = {
-            viewModel.updateSettings(eyeTrackingSensitivity = it)
-        },
-        onGrantedPermissions = {
-            if(activity == null) return@SettingScreen
-            viewModel.requestAccessibilityPermission(activity)
-        }
+        onEyeTrackingToggled = { if (it) context.launchAppController() },
+        onSensitivityChanged = { viewModel.updateSettings(eyeTrackingSensitivity = it) },
+        onGrantedPermissions = { activity?.let { viewModel.requestAccessibilityPermission(it) } }
     )
 }
 
+/**
+ * Main settings screen composable.
+ */
 @Composable
 private fun SettingScreen(
     modifier: Modifier = Modifier,
@@ -81,47 +69,24 @@ private fun SettingScreen(
     onSensitivityChanged: (Float) -> Unit,
     onGrantedPermissions: () -> Unit
 ) {
-    val cardShape = RoundedCornerShape(16.dp)
-    val headerStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
     val fieldModifier = Modifier
         .fillMaxWidth()
-        .background(MaterialTheme.colorScheme.surface, shape = cardShape)
-        .padding(16.dp)
+        .background(MaterialTheme.colorScheme.surface, shape = CardShape)
+        .padding(FieldPadding)
 
     Scaffold(
         modifier = modifier,
-        topBar = {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(
-                    top = 32.dp
-                ),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Start
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = "Back",
-                    modifier = Modifier.padding(16.dp).size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "Settings",
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-            }
-        }
+        topBar = { SettingsTopBar() }
     ) { padding ->
         Column(
             modifier = Modifier
                 .padding(padding)
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = FieldPadding)
                 .fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(SectionSpacing)
         ) {
             HorizontalDivider()
-            SectionHeader(text = "Eye Tracking")
+            SectionHeader("Eye Tracking")
             EyeTrackingCard(
                 modifier = fieldModifier,
                 enabled = uiState.isEyeTrackingEnabled,
@@ -129,17 +94,39 @@ private fun SettingScreen(
                 onToggle = onEyeTrackingToggled,
                 onSensitivityChange = onSensitivityChanged
             )
-            Spacer(modifier = Modifier.height(4.dp))
-            SectionHeader(text = "Permissions")
+            Spacer(Modifier.height(4.dp))
+            SectionHeader("Permissions")
             PermissionsField(
                 modifier = fieldModifier,
-                onGrantedPermissions = onGrantedPermissions,
-                isEnabled = uiState.isAccessibilityServiceRunning
+                isEnabled = uiState.isAccessibilityServiceRunning,
+                onGrantedPermissions = onGrantedPermissions
             )
-            Spacer(modifier = Modifier.height(4.dp))
-            SectionHeader(text = "General")
+            Spacer(Modifier.height(4.dp))
+            SectionHeader("General")
             GeneralField(modifier = fieldModifier)
         }
+    }
+}
+
+@Composable
+private fun SettingsTopBar() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 32.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Start
+    ) {
+        Icon(
+            imageVector = Icons.Default.Settings,
+            contentDescription = "Settings",
+            modifier = Modifier.padding(16.dp).size(24.dp)
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(
+            text = "Settings",
+            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)
+        )
     }
 }
 
@@ -167,12 +154,12 @@ private fun EyeTrackingCard(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Eye Tracking",
+                    "Eye Tracking",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "Enable or disable eye tracking for auto-scrolling.",
+                    "Enable or disable eye tracking for auto-scrolling.",
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -191,21 +178,19 @@ private fun EyeTrackingCard(
         }
         HorizontalDivider()
         Text(
-            text = "Sensitivity",
+            "Sensitivity",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
         )
         Text(
-            text = "Adjust the sensitivity of the eye tracking feature.",
+            "Adjust the sensitivity of the eye tracking feature.",
             style = MaterialTheme.typography.bodySmall.copy(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         )
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(Modifier.height(4.dp))
         Slider(
             value = sensitivity,
-            onValueChange = {
-                onSensitivityChange(it)
-            },
+            onValueChange = onSensitivityChange,
             valueRange = 0f..10f,
             modifier = Modifier.height(2.dp),
             track = { sliderState ->
@@ -223,7 +208,7 @@ private fun EyeTrackingCard(
             },
             thumb = {}
         )
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(Modifier.height(4.dp))
     }
 }
 
@@ -231,7 +216,7 @@ private fun EyeTrackingCard(
 private fun PermissionsField(
     modifier: Modifier,
     isEnabled: Boolean,
-    onGrantedPermissions: () -> Unit = {}
+    onGrantedPermissions: () -> Unit
 ) {
     Column(
         modifier = modifier,
@@ -246,7 +231,7 @@ private fun PermissionsField(
                     "Accessibility",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(Modifier.height(4.dp))
                 Text(
                     "Grant accessibility permission to enable eye tracking functionality.",
                     style = MaterialTheme.typography.bodySmall.copy(
@@ -254,7 +239,7 @@ private fun PermissionsField(
                     )
                 )
             }
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(Modifier.width(8.dp))
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
@@ -274,8 +259,8 @@ private fun PermissionsField(
                 )
             }
         }
-        Spacer(modifier = Modifier.height(16.dp))
-        if(!isEnabled)
+        Spacer(Modifier.height(16.dp))
+        if (!isEnabled)
             BuildButton(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -283,10 +268,10 @@ private fun PermissionsField(
                 color = MaterialTheme.colorScheme.primary,
                 onPress = onGrantedPermissions,
                 enableWidth = false,
-                height = 52.dp,
+                height = ButtonHeight,
                 content = {
                     Text(
-                        text = "Grant Permission",
+                        "Grant Permission",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         textAlign = TextAlign.Center,
                         modifier = Modifier
@@ -306,9 +291,9 @@ private fun GeneralField(modifier: Modifier) {
         GeneralAction.entries.forEach {
             GeneralSettingItem(action = it)
             if (it != GeneralAction.entries.last()) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(Modifier.height(DividerSpacing))
                 HorizontalDivider()
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(Modifier.height(DividerSpacing))
             }
         }
     }
@@ -351,3 +336,4 @@ private fun SettingScreenPreview() {
         )
     }
 }
+

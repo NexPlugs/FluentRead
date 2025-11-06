@@ -12,7 +12,6 @@ import android.widget.ImageView
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.content.ContextCompat
 import com.example.fluentread.R
-import com.example.fluentread.service.AppControllerRepository
 import com.example.fluentread.service.accessibility.ScrollAccessibilityService
 import com.example.fluentread.service.camera.CameraServiceListener
 import com.example.fluentread.service.camera.CameraXService
@@ -156,7 +155,10 @@ class AppController : Service() {
         toggleView = ToggleView(context = this, startPoint = Point(0, 200)).apply {
             rootGroup?.addView(ComposeView(context).apply {
                 setContent {
-                    FluentReadTheme { Toggle() }
+                    FluentReadTheme { Toggle(
+                        onUp = { scrollAccessibilityService?.scrollUp() },
+                        onDown = { scrollAccessibilityService?.scrollDown() },
+                    ) }
                 }
             })
         }

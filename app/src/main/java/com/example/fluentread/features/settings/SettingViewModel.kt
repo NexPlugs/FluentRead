@@ -17,8 +17,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+private const val TAG = "SettingViewModel"
+
 /**
- * Represents the UI state of the Settings screen.
+ * UI state for the Settings screen.
  */
 data class SettingUiState(
     val setting: Setting? = null,
@@ -30,7 +32,7 @@ data class SettingUiState(
 )
 
 /**
- * ViewModel responsible for managing settings data and permissions.
+ * ViewModel for managing settings and permissions.
  */
 @HiltViewModel
 class SettingViewModel @Inject constructor(
@@ -40,7 +42,6 @@ class SettingViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val appPermissions = AppPermissions.getInstance()
-
     private val _uiState = MutableStateFlow(SettingUiState())
     val uiState: StateFlow<SettingUiState> = _uiState
 
@@ -49,72 +50,71 @@ class SettingViewModel @Inject constructor(
     }
 
     /**
-     * Loads current settings from the local database.
-     * Falls back to default if no settings are found.
+     * Loads settings from the database, falling back to defaults if necessary.
      */
     private fun loadSettings() = viewModelScope.launch {
-        runCatching {
-            databaseSettingRepository.getSetting()
-        }.onSuccess { settings ->
-            val setting = settings ?: Setting(distanceDuration = 1.0, delayScroll = 1.0, key = "default")
-            _uiState.update {
-                it.copy(
-                    setting = setting,
-                    distanceDuration = setting.distanceDuration,
-                    delayScroll = setting.delayScroll
-                )
+        runCatching { databaseSettingRepository.getSetting() }
+            .onSuccess { settings ->
+                val setting = settings ?: Setting(distanceDuration = 1.0, delayScroll = 1.0, key = "default")
+                _uiState.update {
+                    it.copy(
+                        setting = setting,
+                        distanceDuration = setting.distanceDuration,
+                        delayScroll = setting.delayScroll
+                    )
+                }
             }
-        }.onFailure { e ->
-            Log.e("SettingViewModel", "Failed to load settings", e)
-        }
+            .onFailure { e ->
+                Log.e(TAG, "Failed to load settings", e)
+            }
     }
 
     /**
-     * Updates the current settings both in memory and in the local database.
+     * Updates settings in memory and persists to the database.
      */
     fun updateSettings(
         distanceDuration: Double? = null,
         delayScroll: Double? = null,
         eyeTrackingSensitivity: Float? = null
     ) = viewModelScope.launch {
-        _uiState.value.setting?.let { current ->
-            val updated = current.copy(
-                distanceDuration = distanceDuration ?: current.distanceDuration,
-                delayScroll = delayScroll ?: current.delayScroll
-            )
-            databaseSettingRepository.insertSetting(updated)
-
-            _uiState.update {
-                it.copy(
-                    setting = updated,
-                    distanceDuration = updated.distanceDuration,
-                    delayScroll = updated.delayScroll,
-                    eyeTrackingSensitivity = eyeTrackingSensitivity ?: it.eyeTrackingSensitivity
-                )
-            }
-        }
-    }
-
-    /**
-     * Checks whether the Accessibility Service and Eye Tracking features are active.
-     */
-    fun refreshServiceStatus() = viewModelScope.launch {
-        val isRunning = appPermissions.isAccessibilityPermissionGranted(context)
-        val isEyeTrackingEnabled = appControllerRepository.cameraIsRunning
+        val current = _uiState.value.setting ?: return@launch
+        val updated = current.copy(
+            distanceDuration = distanceDuration ?: current.distanceDuration,
+            delayScroll = delayScroll ?: current.delayScroll
+        )
+        databaseSettingRepository.insertSetting(updated)
         _uiState.update {
             it.copy(
-                isAccessibilityServiceRunning = isRunning,
-                isEyeTrackingEnabled = isEyeTrackingEnabled
+                setting = updated,
+                distanceDuration = updated.distanceDuration,
+                delayScroll = updated.delayScroll,
+                eyeTrackingSensitivity = eyeTrackingSensitivity ?: it.eyeTrackingSensitivity
             )
         }
     }
 
-    fun isAccessibilityPermissionGranted(): Boolean {
-        return appPermissions.isAccessibilityPermissionGranted(context)
+    /**
+     * Refreshes the status of accessibility and eye tracking services.
+     */
+    fun refreshServiceStatus() = viewModelScope.launch {
+        val isAccessibilityRunning = appPermissions.isAccessibilityPermissionGranted(context)
+        val isEyeTrackingActive = appControllerRepository.cameraIsRunning
+        _uiState.update {
+            it.copy(
+                isAccessibilityServiceRunning = isAccessibilityRunning,
+                isEyeTrackingEnabled = isEyeTrackingActive
+            )
+        }
     }
 
     /**
-     * Triggers the system dialog for granting Accessibility Service permission.
+     * Returns true if accessibility permission is granted.
+     */
+    fun isAccessibilityPermissionGranted(): Boolean =
+        appPermissions.isAccessibilityPermissionGranted(context)
+
+    /**
+     * Requests accessibility permission via system dialog.
      */
     fun requestAccessibilityPermission(activity: Activity) {
         appPermissions.requestAccessibilityPermission(activity)
