@@ -20,6 +20,7 @@ import com.example.fluentread.service.mlk.FaceDetectorService
 import com.example.fluentread.service.notification.NotificationHelper
 import com.example.fluentread.service.overlay.ToggleView
 import com.example.fluentread.service.overlay.compose.Toggle
+import com.example.fluentread.service.overlay.compose.ToggleViewModel
 import com.example.fluentread.ui.theme.FluentReadTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -39,6 +40,8 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class AppController : Service() {
     @Inject lateinit var appControllerRepository: AppControllerRepository
+
+    @Inject lateinit var toggleViewModel: ToggleViewModel
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -156,8 +159,14 @@ class AppController : Service() {
             rootGroup?.addView(ComposeView(context).apply {
                 setContent {
                     FluentReadTheme { Toggle(
+                        toggleViewModel = toggleViewModel,
                         onUp = { scrollAccessibilityService?.scrollUp() },
                         onDown = { scrollAccessibilityService?.scrollDown() },
+                        onEyeScroll = {
+                            val eyeScroll = cameraIsRunning.not()
+                            if (eyeScroll) stopTracking() else startTracking()
+                            toggleViewModel.setEyeScrolling(eyeScroll)
+                        }
                     ) }
                 }
             })

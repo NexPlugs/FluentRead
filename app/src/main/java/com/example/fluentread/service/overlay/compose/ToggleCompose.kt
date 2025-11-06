@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -33,8 +34,12 @@ private data class ToggleAction(
 @Composable
 fun Toggle(
     onUp: () -> Unit,
-    onDown: () -> Unit
+    onDown: () -> Unit,
+    onEyeScroll: () -> Unit,
+    toggleViewModel: ToggleViewModel,
 ) {
+    val uiState = toggleViewModel.uiState.collectAsState().value
+
     ToggleCompose(
         actions = listOf(
             ToggleAction(R.drawable.ic_fast_up) { onUp.invoke() },
