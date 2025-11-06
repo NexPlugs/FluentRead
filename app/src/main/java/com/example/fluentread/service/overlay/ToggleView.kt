@@ -111,7 +111,10 @@ class ToggleView(
                 }
             }
         }
-
+        /** * Function to ignore child click event when the bubble is being moved
+         * @param event The motion event
+         * @return Boolean indicating whether to ignore the click event
+         */
         fun ignoreChildClickEvent(event: MotionEvent): Boolean {
             when (event.action) {
                 MotionEvent.ACTION_UP -> ignoreClick = false
@@ -141,12 +144,11 @@ class ToggleView(
                     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
 
                 }
+
             })
             // Set the ignore child event function
-            this.setOnTouchListener { _, motionEvent ->
-                handleMovement(motionEvent)
-                true
-            }
+            doOnTouchEvent = { handleMovement(it) }
+            ignoreChildEvent = { ignoreChildClickEvent(it) }
         }
     }
 }
