@@ -13,8 +13,8 @@ class NotificationHelper(
     private val channelId: String,
     private val channelName: String,
 ) {
-    fun createNotificationChannel() {
-        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+    fun createNotificationChannel(): NotificationChannel? {
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return null
 
         val channel = NotificationChannel(
             channelId,
@@ -24,6 +24,7 @@ class NotificationHelper(
             lockscreenVisibility = Notification.VISIBILITY_PRIVATE
         }
         NotificationManagerCompat.from(context).createNotificationChannel(channel)
+        return channel
     }
 
     fun createNotificationChannel(channelId:String? = null) {

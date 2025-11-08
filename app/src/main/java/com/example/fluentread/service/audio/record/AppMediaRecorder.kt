@@ -12,12 +12,12 @@ interface AppMediaRecorder {
     fun startAudioRecording(
         recordingName: String,
         amplitudePollingInterval: Long = 100L,
-    ): Unit
+    )
 
     fun stopRecording(): RecordResult
 
     // Deletes the specified recording file.
-    fun deleteRecording(recordingFile: File): Unit
+    fun deleteRecording(recordingFile: File)
 
     // Releases resources associated with the recorder.
     fun release()

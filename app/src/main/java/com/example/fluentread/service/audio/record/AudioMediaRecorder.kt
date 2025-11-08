@@ -21,7 +21,6 @@ const val SAMPLING_RATE_16KHZ = 16000
 const val ENCODING_BIT_RATE_32KBPS = 32000
 
 const val MONO_CHANNEL = 1
-const val STEREO_CHANNEL = 2
 
 
 class AudioMediaRecorder(
@@ -197,7 +196,7 @@ class AudioMediaRecorder(
     override fun startAudioRecording(
         recordingName: String,
         amplitudePollingInterval: Long,
-    ): Unit {
+    ) {
         if(mediaRecorder == null) {
             initialMediaRecorderForAudio(
                 saveFile = File.createTempFile("temp_recording", null, context.cacheDir)
@@ -210,12 +209,14 @@ class AudioMediaRecorder(
                 fileName = recordingName,
             )?.let { it ->
                 recordingFile = it
+
+                initialMediaRecorderForAudio(recordingFile!!)
+
                 mediaRecorder?.start()
                 onRecordStartedListener?.onRecordStarted()
 
                 mediaRecorderState = MediaRecorderState.RECORDING
 
-                initialMediaRecorderForAudio(it)
 
                 return
             }
@@ -252,10 +253,7 @@ class AudioMediaRecorder(
             val audioDuration = getAudioDuration(recordingFile)
             Log.d(TAG, "stopRecording: Calculated audio duration: $calculateAudioDuration ms, Actual audio duration: $audioDuration ms")
 
-            val duration = when(audioDuration > 0) {
-                true -> audioDuration
-                else -> calculateAudioDuration ?: 0L
-            }
+            val duration = calculateAudioDuration.takeIf { it != null &&  it > 0 } ?: audioDuration
             // endregion
 
             release()
