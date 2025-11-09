@@ -4,6 +4,7 @@ import android.app.*
 import android.content.Intent
 import android.media.*
 import android.media.projection.*
+import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
@@ -29,10 +30,14 @@ class ScreenRecorder : Service(), AppScreenRecorder {
         const val NOTIFICATION_CHANNEL_ID = "screen_record_channel_id"
         const val NOTIFICATION_CHANNEL_NAME = "Screen Recording"
 
+        const val REQUEST_CODE_SCREEN_CAPTURE = 0x2001
+
         @Volatile
         var INSTANCE: ScreenRecorder? = null
         fun getInstance(): ScreenRecorder? = INSTANCE
     }
+
+    private val localBinder: LocalBinder = LocalBinder()
 
     // MediaRecorder and related resources
     private var mediaRecorder: MediaRecorder? = null
@@ -85,7 +90,7 @@ class ScreenRecorder : Service(), AppScreenRecorder {
     private var isInitialMedia: Boolean = false
     private val recordAvailable: Boolean get() = mediaProjection != null && outPutFile != null
 
-    override fun onBind(intent: Intent?): IBinder? = null
+    override fun onBind(intent: Intent?): IBinder? = localBinder
 
     override fun onCreate() {
         super.onCreate()
@@ -94,8 +99,33 @@ class ScreenRecorder : Service(), AppScreenRecorder {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startNotificationForeground()
-        return START_STICKY
+        if(intent != null) {
+            when(intent.action) {
+                RecordingActivity.ACTION_START -> {
+                    Log.d(TAG, "Received start action")
+                    startNotificationForeground()
+                    // Get recording name from intent extras
+                    val recordingName = intent.getStringExtra("recording_name") ?: "screen_recording_${System.currentTimeMillis()}.mp4"
+                    startRecording(recordingName, intent)
+
+                    return START_STICKY
+
+                }
+                RecordingActivity.ACTION_STOP -> {
+                    Log.d(TAG, "Received stop action")
+                    stopRecording()
+                    stopSelf()
+                }
+                RecordingActivity.ACTION_CANCEL -> {
+                    Log.d(TAG, "Received cancel action")
+                    release()
+                    destroyMediaProjection()
+                    stopSelf()
+                }
+                else -> Log.w(TAG, "Unknown action received: ${intent.action}")
+            }
+        }
+        return super.onStartCommand(intent, flags, startId)
     }
 
     override fun onDestroy() {
@@ -104,6 +134,14 @@ class ScreenRecorder : Service(), AppScreenRecorder {
     }
 
     override fun isRecording(): Boolean = screenRecordState == ScreenRecordState.RECORDING
+
+    /**
+     * Binder class for clients to interact with the service.Return instance of ScreenRecorder Service
+     * Example: val getService = (binder as ScreenRecorder.LocalBinder).getService()
+     * */
+    inner class LocalBinder : Binder() {
+        fun getService(): ScreenRecorder = this@ScreenRecorder
+    }
 
     /** Build MediaRecorder instance based on Android version. */
     fun buildMediaRecorder(): MediaRecorder =
@@ -139,7 +177,7 @@ class ScreenRecorder : Service(), AppScreenRecorder {
     }
 
     override fun startRecording(recordingName: String, data: Intent) {
-        if (isRecording()) {
+        if (isRecording() || mediaProjectionManager == null) {
             Log.w(TAG, "Screen recording is already in progress.")
             return
         }
@@ -244,8 +282,14 @@ class ScreenRecorder : Service(), AppScreenRecorder {
     /** Release MediaRecorder and MediaProjection resources. */
     private fun release() {
         mediaRecorder?.runCatching {
-            stop()
-            release()
+            try {
+                stop()
+            } catch (e: RuntimeException) {
+                Log.e(TAG, "Error stopping MediaRecorder: ${e.message}", e)
+                outPutFile?.delete()
+            } catch (e: Exception) {
+                Log.e(TAG, "Unexpected error stopping MediaRecorder: ${e.message}", e)
+            } finally { release() }
         }
         screenRecordState = ScreenRecordState.IDLE
         mediaRecorder = null
