@@ -4,19 +4,19 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.content.ContextCompat
 import com.example.fluentread.service.AppController
-import com.example.fluentread.service.screenRecord.ScreenRecorder
+import com.example.fluentread.service.screenRecord.RecordingActivity
 
 
+/** Launch the app controller as a foreground service */
 fun Context.launchAppController() {
-//    val appPermissions = AppPermissions.getInstance()
-    //Implement check app permissions here
-
-    // Implementation goes here
     val intent = Intent(this, AppController::class.java)
     ContextCompat.startForegroundService(this, intent)
 }
 
+/** Launch the screen recorder activity to start recording */
 fun Context.launchScreenRecorder() {
-    val intent = Intent(this, ScreenRecorder::class.java)
-    ContextCompat.startForegroundService(this, intent)
+    val startIntent = Intent(this, RecordingActivity::class.java).apply {
+        action = RecordingActivity.ACTION_START
+    }
+    startActivity(startIntent)
 }

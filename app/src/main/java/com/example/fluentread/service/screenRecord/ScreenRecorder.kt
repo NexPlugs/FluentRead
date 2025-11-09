@@ -98,6 +98,7 @@ class ScreenRecorder : Service(), AppScreenRecorder {
         mediaProjectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
     }
 
+    /** Handle start, stop, and cancel actions from intents. Received action from RecordingActivity */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if(intent != null) {
             when(intent.action) {
@@ -107,9 +108,7 @@ class ScreenRecorder : Service(), AppScreenRecorder {
                     // Get recording name from intent extras
                     val recordingName = intent.getStringExtra("recording_name") ?: "screen_recording_${System.currentTimeMillis()}.mp4"
                     startRecording(recordingName, intent)
-
                     return START_STICKY
-
                 }
                 RecordingActivity.ACTION_STOP -> {
                     Log.d(TAG, "Received stop action")

@@ -15,7 +15,8 @@
 
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
 
     <uses-permission android:name="android.permission.RECORD_SCREEN"/>
 
@@ -46,6 +47,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity android:name= ".service.screenRecord.RecordingActivity"
+            android:exported="false"
+            android:theme="@style/Theme.FluentRead.Transparent"/>
 
         <service
             android:name=".service.accessibility.ScrollAccessibilityService"

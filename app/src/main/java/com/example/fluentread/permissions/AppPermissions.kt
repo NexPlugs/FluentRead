@@ -139,6 +139,10 @@ class AppPermissions {
 
     }
 
+    fun requestReadExternalStoragePermission(activity: Activity) {
+        // Implementation for requesting read external storage permission
+    }
+
     /**
      * Requests camera permission from the user.
      * @param activity The activity from which the permission request is initiated.
@@ -168,10 +172,6 @@ class AppPermissions {
         }
     }
 
-    fun requestMultiplePermissions(activity: Activity) {
-        // Implementation for requesting multiple permissions
-    }
-
     /**
      * Checks if the accessibility permission is granted.
      * @param context The context to access system settings.
@@ -191,6 +191,26 @@ class AppPermissions {
      */
     fun isOverlayPermissionGranted(context: Context): Boolean {
         return Settings.canDrawOverlays(context)
+    }
+
+    /**
+     * Checks if the read external storage permission is granted.
+     * @param context The context to check the permission status.
+     */
+    fun isReadExternalStoragePermissionGranted(context: Context): Boolean {
+        val readPermission = android.Manifest.permission.READ_EXTERNAL_STORAGE
+        val permissionStatus = context.checkSelfPermission(readPermission)
+        return permissionStatus == PackageManager.PERMISSION_GRANTED
+    }
+
+    /**
+     * Checks if the write external storage permission is granted.
+     * @param context The context to check the permission status.
+     */
+    fun isWriteExternalStoragePermissionGranted(context: Context): Boolean {
+        val writePermission = android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+        val permissionStatus = context.checkSelfPermission(writePermission)
+        return permissionStatus == PackageManager.PERMISSION_GRANTED
     }
 
     /**
