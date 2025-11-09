@@ -61,6 +61,7 @@ class ScreenRecorder : Service(), AppScreenRecorder {
                 ScreenRecordState.PAUSED -> pauseTiming()
                 else -> Unit
             }
+            Log.d(TAG, "MediaRecorder instance updated. $value")
         }
 
     // Notification
@@ -172,15 +173,15 @@ class ScreenRecorder : Service(), AppScreenRecorder {
     }
 
     override fun stopRecording(): ScreenRecordResult {
-        if (!isRecording() || !recordAvailable) {
+        if (!isRecording()) {
             Log.w(TAG, "No active screen recording to stop.")
             throw IllegalStateException("No active screen recording to stop.")
         }
         return runCatching {
-            mediaRecorder?.stop()
             val duration = calculateDuration()
             release()
             destroyMediaProjection()
+
             @Suppress("DEPRECATION")
             stopForeground(true)
             val result = ScreenRecordResult(
@@ -188,6 +189,7 @@ class ScreenRecorder : Service(), AppScreenRecorder {
                 durationMillis = duration,
                 fileSizeBytes = outPutFile!!.length()
             )
+            Log.d(TAG, "Screen recording stopped. File: ${result.filePath}, Duration: ${result.durationMillis} ms, Size: ${result.fileSizeBytes} bytes")
             outPutFile = null
             result
         }.getOrElse { err ->

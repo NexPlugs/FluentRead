@@ -12,16 +12,20 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.fluentread.features.components.BuildButton
+import com.example.fluentread.utils.launchScreenRecorder
 
 @Composable
 fun AudioPlayScreen(
     modifier: Modifier,
     controller: AudioController = hiltViewModel<AudioController>()
 ) {
+    val context = LocalContext.current
+
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.Center
@@ -37,7 +41,11 @@ fun AudioPlayScreen(
                 controller.setAudioUrl("https://commondatastorage.googleapis.com/codeskulptor-demos/DDR_assets/Kangaroo_MusiQue_-_The_Neverwritten_Role_Playing_Game.mp3")
             }
         ) {
-            Text(text = "Set Audio", textAlign = TextAlign.Center)
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                text =  "Start audio play",
+                textAlign = TextAlign.Center
+            )
         }
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -52,8 +60,51 @@ fun AudioPlayScreen(
                 controller.play("https://commondatastorage.googleapis.com/codeskulptor-demos/DDR_assets/Kangaroo_MusiQue_-_The_Neverwritten_Role_Playing_Game.mp3")
             }
         ) {
-            Text(text = "Set Audio", textAlign = TextAlign.Center)
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                text = "Set Audio", textAlign = TextAlign.Center
+            )
         }
 
+        BuildButton(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp, vertical = 16.dp)
+                .align(Alignment.CenterHorizontally),
+            color = MaterialTheme.colorScheme.primary,
+            onPress = { context.launchScreenRecorder() }
+        ) {
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                text = "Initial Screen Service ", textAlign = TextAlign.Center)
+        }
+
+        BuildButton(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp, vertical = 16.dp)
+                .align(Alignment.CenterHorizontally),
+            color = MaterialTheme.colorScheme.primary,
+            onPress = { controller.startRecord() }
+        ) {
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                text = "Start Screen Record", textAlign = TextAlign.Center
+            )
+        }
+
+        BuildButton(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp, vertical = 16.dp)
+                .align(Alignment.CenterHorizontally),
+            color = MaterialTheme.colorScheme.primary,
+            onPress = { controller.stopRecord() }
+        ) {
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                text = "Stop Screen Record", textAlign = TextAlign.Center
+            )
+        }
     }
 }

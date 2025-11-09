@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
+import com.example.fluentread.features.audio.AUDIO_NAVIGATION_ROUTE
 import com.example.fluentread.features.audio.audioScreen
 import com.example.fluentread.features.onboarding.ENABLE_PERMISSION_ROUTE
 import com.example.fluentread.features.onboarding.ONBOARDING_ROUTE
@@ -36,7 +37,6 @@ fun AppNavigation() {
 fun AppNavHost(
     navController: NavHostController
 ) {
-    // Default modifier for screens
     val modifier = Modifier.background(MaterialTheme.colorScheme.background).fillMaxSize()
 
     NavHost(
@@ -54,7 +54,7 @@ fun AppNavHost(
         }
 
         enablePermissionScreen(modifier) {
-            navController.navigate(SETTING_ROUTE) {
+            navController.navigate(AUDIO_NAVIGATION_ROUTE) {
                 popUpTo(ENABLE_PERMISSION_ROUTE) { inclusive = true }
             }
         }
