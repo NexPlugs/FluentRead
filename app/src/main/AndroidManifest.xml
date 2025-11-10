@@ -50,7 +50,7 @@
 
         <activity android:name= ".service.screenRecord.RecordingActivity"
             android:exported="false"
-            android:theme="@style/Theme.FluentRead.Transparent"/>
+            android:theme="@style/InvisibleActivity"/>
 
         <service
             android:name=".service.accessibility.ScrollAccessibilityService"

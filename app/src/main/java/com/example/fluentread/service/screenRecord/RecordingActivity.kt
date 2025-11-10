@@ -70,6 +70,7 @@ class RecordingActivity: AppCompatActivity() {
         }
     }
 
+
     /**
      * Starts the screen recording process.
      * Currently, this function is a placeholder and does not implement any functionality.
