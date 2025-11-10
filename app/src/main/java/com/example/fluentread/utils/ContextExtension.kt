@@ -17,6 +17,7 @@ fun Context.launchAppController() {
 fun Context.launchScreenRecorder() {
     val startIntent = Intent(this, RecordingActivity::class.java).apply {
         action = RecordingActivity.ACTION_START
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
     }
     startActivity(startIntent)
 }

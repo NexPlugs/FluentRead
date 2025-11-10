@@ -7,10 +7,11 @@ import android.content.ServiceConnection
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.os.IBinder
-import android.os.PersistableBundle
+import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import com.example.fluentread.permissions.AppPermissions
 
 /**
@@ -38,8 +39,10 @@ class RecordingActivity: AppCompatActivity() {
     private var action: String? = null
 
 
-    override fun onCreate(savedInstanceState: Bundle?, persistentState: PersistableBundle?) {
-        super.onCreate(savedInstanceState, persistentState)
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        Log.d(TAG, "onCreate: RecordingActivity created")
 
         mediaProjectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
@@ -65,11 +68,12 @@ class RecordingActivity: AppCompatActivity() {
         caller: ComponentCaller
     ) {
         super.onActivityResult(requestCode, resultCode, data, caller)
+
+        Log.d(TAG, "onActivityResult: Received activity result with requestCode: $requestCode, resultCode: $resultCode")
         if (requestCode == ScreenRecorder.REQUEST_CODE_SCREEN_CAPTURE) {
             // TODO: Handle screen capture result
         }
     }
-
 
     /**
      * Starts the screen recording process.
@@ -77,8 +81,9 @@ class RecordingActivity: AppCompatActivity() {
      * Send an intent to start or stop the ScreenRecorder service based on the action.
      */
     private fun startRecording() {
-        when(action) {
-            ACTION_START -> { checkPermissionThenStart()}
+        Log.d(TAG, "startRecording: Starting recording with action: $action")
+        when(action ?: "") {
+            ACTION_START, "" -> { checkPermissionThenStart() }
             else -> {
                 val stopIntent = Intent(this, ScreenRecorder::class.java).apply { action = ACTION_STOP }
                 startService(stopIntent)
@@ -92,12 +97,13 @@ class RecordingActivity: AppCompatActivity() {
      * Currently, this function is a placeholder and does not implement any functionality.
      */
     private fun checkPermissionThenStart() {
+        Log.d(TAG, "checkPermissionThenStart: Checking permissions")
         if(!AppPermissions.getInstance().isWriteExternalStoragePermissionGranted(this)) {
-            val permissions = arrayOf(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
-
+            Log.d(TAG, "checkPermissionThenStart: Requesting WRITE_EXTERNAL_STORAGE permission")
+            val permissions = arrayListOf(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
             //TODO: Check if include audio
             permissions.plus(android.Manifest.permission.RECORD_AUDIO)
-            requestPermissions(permissions, ScreenRecorder.REQUEST_CODE_SCREEN_CAPTURE)
+            ActivityCompat.requestPermissions(this, permissions.toTypedArray(), ScreenRecorder.REQUEST_CODE_PERMISSION)
         } else {
             createScreenCaptureIntent()
         }
@@ -142,6 +148,7 @@ class RecordingActivity: AppCompatActivity() {
      * Creates an intent to capture the screen and launches it.
      */
     private fun createScreenCaptureIntent() {
+        Log.d(TAG, "createScreenCaptureIntent: Creating screen capture intent")
         val captureIntent = mediaProjectionManager.createScreenCaptureIntent()
         screenCaptureLauncher.launch(captureIntent)
     }

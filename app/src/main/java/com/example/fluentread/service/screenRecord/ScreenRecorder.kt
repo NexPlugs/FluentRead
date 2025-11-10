@@ -32,6 +32,8 @@ class ScreenRecorder : Service(), AppScreenRecorder {
 
         const val REQUEST_CODE_SCREEN_CAPTURE = 0x2001
 
+        const val REQUEST_CODE_PERMISSION = 0
+
         @Volatile
         var INSTANCE: ScreenRecorder? = null
         fun getInstance(): ScreenRecorder? = INSTANCE
