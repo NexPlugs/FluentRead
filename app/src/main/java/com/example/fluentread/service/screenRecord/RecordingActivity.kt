@@ -1,17 +1,19 @@
 package com.example.fluentread.service.screenRecord
 
-import android.app.ComponentCaller
+import android.Manifest
+import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.os.IBinder
+import android.provider.Settings
 import android.util.Log
+import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
 import com.example.fluentread.permissions.AppPermissions
 
 /**
@@ -28,6 +30,7 @@ class RecordingActivity: AppCompatActivity() {
         const val ACTION_CANCEL = "com.example.fluentread.service.screenRecord.action.CANCEL"
     }
 
+    // MediaProjectionManager to handle screen capture intents
     private lateinit var mediaProjectionManager: MediaProjectionManager
 
     private val localServiceConnection: LocalServiceConnection = LocalServiceConnection()
@@ -49,9 +52,7 @@ class RecordingActivity: AppCompatActivity() {
         action = intent?.action
         screenCaptureLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
-        ) {
-            mediaProjectionManager.createScreenCaptureIntent()
-        }
+        ) { onActivityResult(it) }
     }
 
     override fun onStart() {
@@ -61,17 +62,23 @@ class RecordingActivity: AppCompatActivity() {
         bindService(intent, localServiceConnection, BIND_AUTO_CREATE)
     }
 
-    override fun onActivityResult(
-        requestCode: Int,
-        resultCode: Int,
-        data: Intent?,
-        caller: ComponentCaller
+    /** Handles the result from the screen capture intent.
+     * If the result is OK, it starts the screen recording service.
+     * If the result is not OK, it finishes the activity.
+     */
+    fun onActivityResult(
+        activityResult: ActivityResult
     ) {
-        super.onActivityResult(requestCode, resultCode, data, caller)
-
-        Log.d(TAG, "onActivityResult: Received activity result with requestCode: $requestCode, resultCode: $resultCode")
-        if (requestCode == ScreenRecorder.REQUEST_CODE_SCREEN_CAPTURE) {
-            // TODO: Handle screen capture result
+        Log.d(TAG, "onActivityResult: Screen capture intent result received with resultCode: ${activityResult.resultCode}")
+        if(activityResult.resultCode == RESULT_OK) {
+            Log.d(TAG, "onActivityResult: Result OK, starting screen recording")
+            val startIntent = Intent(this, ScreenRecorder::class.java).apply {
+                action = ACTION_START
+            }
+            startService(startIntent)
+        } else {
+            Log.d(TAG, "onActivityResult: Result not OK or data is null, finishing activity")
+            finish()
         }
     }
 
@@ -83,7 +90,7 @@ class RecordingActivity: AppCompatActivity() {
     private fun startRecording() {
         Log.d(TAG, "startRecording: Starting recording with action: $action")
         when(action ?: "") {
-            ACTION_START, "" -> { checkPermissionThenStart() }
+            ACTION_START, "" -> { createScreenCaptureIntent() }
             else -> {
                 val stopIntent = Intent(this, ScreenRecorder::class.java).apply { action = ACTION_STOP }
                 startService(stopIntent)
@@ -95,18 +102,36 @@ class RecordingActivity: AppCompatActivity() {
     /**
      * Checks for necessary permissions.
      * Currently, this function is a placeholder and does not implement any functionality.
+     * check for Android SDK INT >= 23 WRITE_EXTERNAL_STORAGE permission before starting screen capture intent.
+     * 👉 Since Android 10 (API 29), the permission
+     * WRITE_EXTERNAL_STORAGE no longer triggers a dialog,
+     * Targeting Android 11+ (API 30+)
+     * WRITE_EXTERNAL_STORAGE is deprecated — you must request:
      */
     private fun checkPermissionThenStart() {
         Log.d(TAG, "checkPermissionThenStart: Checking permissions")
         if(!AppPermissions.getInstance().isWriteExternalStoragePermissionGranted(this)) {
             Log.d(TAG, "checkPermissionThenStart: Requesting WRITE_EXTERNAL_STORAGE permission")
-            val permissions = arrayListOf(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            val permissions = arrayListOf(Manifest.permission.WRITE_EXTERNAL_STORAGE)
             //TODO: Check if include audio
-            permissions.plus(android.Manifest.permission.RECORD_AUDIO)
-            ActivityCompat.requestPermissions(this, permissions.toTypedArray(), ScreenRecorder.REQUEST_CODE_PERMISSION)
+            permissions.plus(Manifest.permission.RECORD_AUDIO)
+            AlertDialog.Builder(this)
+                .setTitle("Permission needed")
+                .setMessage("This app needs storage access to save files.")
+                .setPositiveButton("OK") { _, _ ->
+                    requestAppPermissions(permissions.toTypedArray(), ScreenRecorder.REQUEST_CODE_PERMISSION)
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
         } else {
             createScreenCaptureIntent()
         }
+    }
+
+    private fun requestAppPermissions(permissions: Array<String>, requestCode: Int) {
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+        intent.data = android.net.Uri.fromParts("package", packageName, null)
+        startActivity(intent)
     }
 
     /** Handles the result of permission requests.
@@ -131,7 +156,7 @@ class RecordingActivity: AppCompatActivity() {
     /**
      * Inner class to handle service connection callbacks.
      */
-    private inner class LocalServiceConnection : ServiceConnection{
+    private inner class LocalServiceConnection : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             boundService = (service as ScreenRecorder.LocalBinder).getService()
             isServiceBound = true
