@@ -106,6 +106,7 @@ class ScreenRecorder : Service(), AppScreenRecorder {
             when(intent.action) {
                 RecordingActivity.ACTION_START -> {
                     Log.d(TAG, "Received start action")
+
                     startNotificationForeground()
                     // Get recording name from intent extras
                     val recordingName = intent.getStringExtra("recording_name") ?: "screen_recording_${System.currentTimeMillis()}.mp4"
@@ -134,6 +135,7 @@ class ScreenRecorder : Service(), AppScreenRecorder {
         release()
     }
 
+
     override fun isRecording(): Boolean = screenRecordState == ScreenRecordState.RECORDING
 
     /**
@@ -158,6 +160,8 @@ class ScreenRecorder : Service(), AppScreenRecorder {
      */
     @Throws
     private fun initMediaProjection(savedFile: File) {
+        Log.d(TAG, "Initializing MediaProjection and MediaRecorder. File path: ${savedFile.absolutePath}")
+
         release()
         mediaRecorder = buildMediaRecorder().apply {
             setVideoSource(MediaRecorder.VideoSource.SURFACE)
@@ -184,6 +188,7 @@ class ScreenRecorder : Service(), AppScreenRecorder {
         }
         runCatching {
             FileHelper.createFileInCache(applicationContext, fileName = recordingName)?.let { file ->
+
                 outPutFile = file
                 mediaProjection = mediaProjectionManager?.getMediaProjection(Activity.RESULT_OK, data)
                 mediaProjectionCallBack = object : MediaProjection.Callback() {

@@ -15,6 +15,7 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.example.fluentread.permissions.AppPermissions
+import com.example.fluentread.service.file.FileHelper
 
 /**
  * Activity to handle screen recording.
@@ -77,8 +78,9 @@ class RecordingActivity: AppCompatActivity() {
             }
             startService(startIntent)
         } else {
-            Log.d(TAG, "onActivityResult: Result not OK or data is null, finishing activity")
-            finish()
+//            Log.d(TAG, "onActivityResult: Result not OK or data is null, finishing activity")
+//            finish()
+            FileHelper.logVideoFileInfo(this.applicationContext)
         }
     }
 

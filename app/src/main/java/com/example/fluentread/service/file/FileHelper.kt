@@ -1,9 +1,11 @@
 package com.example.fluentread.service.file
 
+import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
+import android.provider.MediaStore
 import android.util.Log
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -82,6 +84,13 @@ object FileHelper {
 
     // Gets or creates the cache directory for images.
     private fun getCacheDir(context: Context): File? = createCacheDir(context)
+
+    private fun getVideoMediaStoreUri(id: Long): Uri {
+        return Uri.withAppendedPath(
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+            id.toString()
+        )
+    }
 
     /**
      * Creates a cache directory for images if it doesn't already exist.
@@ -162,5 +171,38 @@ object FileHelper {
             throw it
         }
         return null
+    }
+
+    @SuppressLint("Recycle")
+    fun logVideoFileInfo(context: Context) {
+        Log.d(TAG, "logVideoFileInfo: Retrieving video file information from MediaStore")
+        val projection =  arrayOf(
+            android.provider.MediaStore.Video.Media._ID,
+            android.provider.MediaStore.Video.Media.DISPLAY_NAME,
+            android.provider.MediaStore.Video.Media.SIZE,
+            android.provider.MediaStore.Video.Media.DURATION
+        )
+        val cursor = context.contentResolver.query(
+            android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            null,
+            null,
+            null
+        )
+        cursor?.use {
+            val idIndex = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media._ID)
+            val nameIndex = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media.DISPLAY_NAME)
+            val sizeIndex = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media.SIZE)
+            val durationIndex = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media.DURATION)
+
+            while (cursor.moveToNext()) {
+                val id = cursor.getLong(idIndex)
+                val name = cursor.getString(nameIndex)
+                val size = cursor.getLong(sizeIndex)
+                val duration = cursor.getLong(durationIndex)
+
+                Log.d(TAG, "Video File - ID: $id, Name: $name, Size: $size bytes, Duration: $duration ms")
+            }
+        }
     }
 }
