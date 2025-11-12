@@ -226,10 +226,12 @@ class ScreenRecorder : Service(), AppScreenRecorder {
             release()
             destroyMediaProjection()
 
+            val recordPath = FileHelper.saveVideoToMediaStore(applicationContext, outPutFile)
+
             @Suppress("DEPRECATION")
             stopForeground(true)
             val result = ScreenRecordResult(
-                filePath = outPutFile!!.absolutePath,
+                filePath = recordPath ?: outPutFile?.absolutePath.orEmpty(),
                 durationMillis = duration,
                 fileSizeBytes = outPutFile!!.length()
             )

@@ -2,6 +2,7 @@ package com.example.fluentread.service.file
 
 import android.annotation.SuppressLint
 import android.content.ComponentName
+import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
@@ -85,11 +86,37 @@ object FileHelper {
     // Gets or creates the cache directory for images.
     private fun getCacheDir(context: Context): File? = createCacheDir(context)
 
-    private fun getVideoMediaStoreUri(id: Long): Uri {
-        return Uri.withAppendedPath(
-            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-            id.toString()
-        )
+    // Saves a video file to the MediaStore and deletes the original file.
+    fun saveVideoToMediaStore(context: Context, videoFile: File?): String? {
+        videoFile ?: return null
+
+        val values = ContentValues().apply {
+            put(MediaStore.Video.Media.DISPLAY_NAME, videoFile.name)
+            put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+            put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/MyAppVideos")
+            put(MediaStore.Video.Media.IS_PENDING, 1)
+        }
+
+        val resolver = context.contentResolver
+
+        val uri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values) ?: return null
+
+        return try {
+            resolver.openOutputStream(uri).use { outputStream ->
+                videoFile.inputStream().use { inputStream ->
+                    inputStream.copyTo(outputStream!!)
+                }
+            }
+            values.clear()
+            values.put(MediaStore.Video.Media.IS_PENDING, 0)
+            resolver.update(uri, values, null, null)
+            // Delete the original video file
+            videoFile.delete()
+            uri.toString()
+        } catch (e: Exception) {
+            Log.e(TAG, "saveVideoToMediaStore: Failed to save video to MediaStore: ${e.message}" )
+            null
+        }
     }
 
     /**
@@ -177,23 +204,23 @@ object FileHelper {
     fun logVideoFileInfo(context: Context) {
         Log.d(TAG, "logVideoFileInfo: Retrieving video file information from MediaStore")
         val projection =  arrayOf(
-            android.provider.MediaStore.Video.Media._ID,
-            android.provider.MediaStore.Video.Media.DISPLAY_NAME,
-            android.provider.MediaStore.Video.Media.SIZE,
-            android.provider.MediaStore.Video.Media.DURATION
+            MediaStore.Video.Media._ID,
+            MediaStore.Video.Media.DISPLAY_NAME,
+            MediaStore.Video.Media.SIZE,
+            MediaStore.Video.Media.DURATION
         )
         val cursor = context.contentResolver.query(
-            android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
             projection,
             null,
             null,
             null
         )
         cursor?.use {
-            val idIndex = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media._ID)
-            val nameIndex = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media.DISPLAY_NAME)
-            val sizeIndex = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media.SIZE)
-            val durationIndex = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media.DURATION)
+            val idIndex = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
+            val nameIndex = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
+            val sizeIndex = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)
+            val durationIndex = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idIndex)
