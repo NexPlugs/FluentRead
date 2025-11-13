@@ -67,9 +67,7 @@ class RecordingActivity: AppCompatActivity() {
      * If the result is OK, it starts the screen recording service.
      * If the result is not OK, it finishes the activity.
      */
-    fun onActivityResult(
-        activityResult: ActivityResult
-    ) {
+    fun onActivityResult(activityResult: ActivityResult) {
         Log.d(TAG, "onActivityResult: Screen capture intent result received with resultCode: ${activityResult.resultCode}")
         if(activityResult.resultCode == RESULT_OK) {
             Log.d(TAG, "onActivityResult: Result OK, starting screen recording")
@@ -78,8 +76,6 @@ class RecordingActivity: AppCompatActivity() {
             }
             startService(startIntent)
         } else {
-//            Log.d(TAG, "onActivityResult: Result not OK or data is null, finishing activity")
-//            finish()
             FileHelper.logVideoFileInfo(this.applicationContext)
         }
     }

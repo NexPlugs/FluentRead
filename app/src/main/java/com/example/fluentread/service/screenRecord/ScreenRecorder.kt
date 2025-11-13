@@ -1,26 +1,40 @@
 package com.example.fluentread.service.screenRecord
 
+import android.annotation.SuppressLint
 import android.app.*
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.graphics.Point
 import android.media.*
 import android.media.projection.*
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import android.provider.Settings
 import android.util.Log
+import androidx.annotation.RequiresApi
+import androidx.compose.ui.platform.ComposeView
 import androidx.core.app.NotificationCompat
 import com.example.fluentread.service.audio.record.AudioMediaRecorder
 import com.example.fluentread.service.file.FileHelper
 import com.example.fluentread.service.notification.NotificationHelper
+import com.example.fluentread.service.overlay.ToggleView
+import com.example.fluentread.service.overlay.screenRecordCompose.ScreenRecordCompose
+import com.example.fluentread.service.overlay.screenRecordCompose.ScreenRecordViewModel
 import com.example.fluentread.service.screenRecord.models.ScreenRecordResult
 import com.example.fluentread.service.screenRecord.models.ScreenRecordState
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import java.io.File
+import javax.inject.Inject
 
 /**
  * Foreground service for screen recording.
  */
+@AndroidEntryPoint
 class ScreenRecorder : Service(), AppScreenRecorder {
 
     companion object {
@@ -39,7 +53,13 @@ class ScreenRecorder : Service(), AppScreenRecorder {
         fun getInstance(): ScreenRecorder? = INSTANCE
     }
 
+    /** Screen recorder toggle */
+    @Inject lateinit var screenRecordViewModel: ScreenRecordViewModel
+    private var screenRecordToggle : ToggleView? = null
+
     private val localBinder: LocalBinder = LocalBinder()
+    private val localBroadcastReceiver: LocalBroadcastReceiver = LocalBroadcastReceiver()
+
 
     // MediaRecorder and related resources
     private var mediaRecorder: MediaRecorder? = null
@@ -98,6 +118,19 @@ class ScreenRecorder : Service(), AppScreenRecorder {
         super.onCreate()
         INSTANCE = this
         mediaProjectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+
+        // Init local broadcast receiver for handling system events
+        val intentFilter = IntentFilter()
+        intentFilter.addAction(Intent.ACTION_SCREEN_OFF)
+        intentFilter.addAction(Intent.ACTION_SHUTDOWN)
+        intentFilter.addAction(Intent.ACTION_DELETE)
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(localBroadcastReceiver, intentFilter, RECEIVER_EXPORTED)
+        } else {
+            @Suppress("DEPRECATION")
+            @SuppressLint("UnspecifiedRegisterReceiverFlag")
+            registerReceiver(localBroadcastReceiver, intentFilter)
+        }
     }
 
     /** Handle start, stop, and cancel actions from intents. Received action from RecordingActivity */
@@ -108,6 +141,7 @@ class ScreenRecorder : Service(), AppScreenRecorder {
                     Log.d(TAG, "Received start action")
 
                     startNotificationForeground()
+                    onCreateAndShowScreenRecordToggle()
                     // Get recording name from intent extras
                     val recordingName = intent.getStringExtra("recording_name") ?: "screen_recording_${System.currentTimeMillis()}.mp4"
                     startRecording(recordingName, intent)
@@ -130,9 +164,38 @@ class ScreenRecorder : Service(), AppScreenRecorder {
         return super.onStartCommand(intent, flags, startId)
     }
 
+    /** Create and show the screen record toggle bubble */
+    private fun onCreateAndShowScreenRecordToggle() {
+        if(screenRecordToggle != null) return
+        if(!Settings.canDrawOverlays(this)) return
+        Log.d(TAG, "onCreateScreenRecordToggle: Creating screen record toggle bubble")
+        screenRecordToggle = ToggleView(context = this, startPoint = Point(0, 300)).apply {
+            rootGroup?.addView(ComposeView(context).apply {
+                setContent {
+                    ScreenRecordCompose(
+                        screenRecordViewModel = screenRecordViewModel,
+                        onStartRecording = {
+                            val recordingName = "screen_recording_${System.currentTimeMillis()}.mp4"
+                            val captureIntent = mediaProjectionManager?.createScreenCaptureIntent()
+                            captureIntent?.putExtra("recording_name", recordingName)
+                            captureIntent?.let { intent ->
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                startActivity(intent)
+                            }
+                        },
+                        onStopRecording = { stopRecording() },
+                    )
+                }
+            })
+        }
+        screenRecordToggle?.show()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         release()
+
+        unregisterReceiver(localBroadcastReceiver)
     }
 
 
@@ -144,6 +207,24 @@ class ScreenRecorder : Service(), AppScreenRecorder {
      * */
     inner class LocalBinder : Binder() {
         fun getService(): ScreenRecorder = this@ScreenRecorder
+    }
+
+    /** Local broadcast receiver placeholder. */
+    private inner class LocalBroadcastReceiver: BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            intent ?: return
+            when(intent.action) {
+                // If behavior requires stopping recording on screen off or shutdown
+                Intent.ACTION_SCREEN_OFF, Intent.ACTION_SHUTDOWN -> {
+                    Log.d(TAG, "Screen turned off. Stopping recording if active.")
+                    stopRecording()
+                }
+                Intent.ACTION_DELETE -> {
+                    Log.d(TAG, "Recording file deleted: ${intent.data}. Stopping recording if active.")
+                }
+            }
+        }
+
     }
 
     /** Build MediaRecorder instance based on Android version. */
@@ -237,6 +318,8 @@ class ScreenRecorder : Service(), AppScreenRecorder {
             )
             Log.d(TAG, "Screen recording stopped. File: ${result.filePath}, Duration: ${result.durationMillis} ms, Size: ${result.fileSizeBytes} bytes")
             outPutFile = null
+
+            screenRecordViewModel.setIsRecording(isRecording = false)
             result
         }.getOrElse { err ->
             Log.e(TAG, "Error stopping screen recording: ${err.message}", err)
@@ -289,18 +372,26 @@ class ScreenRecorder : Service(), AppScreenRecorder {
 
     /** Release MediaRecorder and MediaProjection resources. */
     private fun release() {
-        mediaRecorder?.runCatching {
+        mediaRecorder ?: return
+        try {
+            if(isRecording()) {
+                mediaRecorder?.stop()
+            } else {
+                Log.d(TAG, "MediaRecorder is not recording. Skipping stop.")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error stopping MediaRecorder: ${e.message}", e)
+        } finally {
             try {
-                stop()
-            } catch (e: RuntimeException) {
-                Log.e(TAG, "Error stopping MediaRecorder: ${e.message}", e)
-                outPutFile?.delete()
+                mediaRecorder?.reset()
+                mediaRecorder?.release()
             } catch (e: Exception) {
-                Log.e(TAG, "Unexpected error stopping MediaRecorder: ${e.message}", e)
-            } finally { release() }
+                Log.e(TAG, "Error releasing MediaRecorder: ${e.message}", e)
+            }
+            mediaRecorder = null
+            screenRecordState = ScreenRecordState.IDLE
+            Log.d(TAG, "MediaRecorder resources released.")
         }
-        screenRecordState = ScreenRecordState.IDLE
-        mediaRecorder = null
     }
 
     /** Destroy MediaProjection and unregister callback. */
@@ -360,4 +451,6 @@ class ScreenRecorder : Service(), AppScreenRecorder {
     private fun pauseTiming() {
         pauseStartTime = System.currentTimeMillis()
     }
+
+
 }
