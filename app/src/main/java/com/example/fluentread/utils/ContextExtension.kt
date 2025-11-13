@@ -2,6 +2,8 @@ package com.example.fluentread.utils
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build.VERSION.SDK_INT
+import android.os.Parcelable
 import androidx.core.content.ContextCompat
 import com.example.fluentread.service.AppController
 import com.example.fluentread.service.screenRecord.RecordingActivity
@@ -20,4 +22,9 @@ fun Context.launchScreenRecorder() {
         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
     }
     startActivity(startIntent)
+}
+
+inline fun <reified T : Parcelable> Intent.parcelable(key: String): T? = when {
+    SDK_INT >= 33 -> getParcelableExtra(key, T::class.java)
+    else -> @Suppress("DEPRECATION") getParcelableExtra(key) as? T
 }

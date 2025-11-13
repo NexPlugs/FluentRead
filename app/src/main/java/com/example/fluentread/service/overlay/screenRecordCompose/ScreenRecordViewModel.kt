@@ -8,7 +8,7 @@ import javax.inject.Inject
 
 
 data class ScreenRecordDataView(
-    val isRecording: Boolean = true,
+    val isRecording: Boolean = false,
     val recordingTime: Long = 0L
 )
 

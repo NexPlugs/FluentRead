@@ -10,7 +10,7 @@ import java.io.File
 interface AppMediaRecorder {
     // Starts audio recording with the specified parameters.
     fun startAudioRecording(
-        recordingName: String,
+        recordingName: String? = null,
         amplitudePollingInterval: Long = 100L,
     )
 

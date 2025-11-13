@@ -15,6 +15,27 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
+/**
+ * Enum class representing different media types with their associated MIME types and relative paths.
+ */
+enum class MediaType {
+    VIDEO,
+    AUDIO;
+
+    /** Returns the MIME type associated with the media type. */
+    val mimeType: String
+        get() = when(this) {
+            VIDEO -> "video/mp4"
+            AUDIO -> "audio/mpeg"
+        }
+
+    /** Returns the relative path associated with the media type. */
+    val relativePath: String
+        get() = when(this) {
+            VIDEO -> "Movies/FluentRead"
+            AUDIO -> "Music/FluentRead"
+        }
+}
 
 /**
  * Helper object for file-related operations.
@@ -24,6 +45,8 @@ object FileHelper {
     const val TAG = "FileHelper"
 
     const val CACHE_DIR_NAME = "images"
+
+    const val APP_NAME = "FluentRead"
 
     const val BITMAP_COMPRESS_QUALITY = 100
     /**
@@ -87,34 +110,47 @@ object FileHelper {
     private fun getCacheDir(context: Context): File? = createCacheDir(context)
 
     // Saves a video file to the MediaStore and deletes the original file.
-    fun saveVideoToMediaStore(context: Context, videoFile: File?): String? {
-        videoFile ?: return null
+    fun saveFileToMediaStore(context: Context, file: File?, mediaType: MediaType): String? {
+        file ?: return null
 
-        val values = ContentValues().apply {
-            put(MediaStore.Video.Media.DISPLAY_NAME, videoFile.name)
-            put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-            put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/MyAppVideos")
+        val values = if(mediaType == MediaType.VIDEO) ContentValues().apply {
+            put(MediaStore.Video.Media.DISPLAY_NAME, file.name)
+            put(MediaStore.Video.Media.MIME_TYPE, mediaType.mimeType)
+            put(MediaStore.Video.Media.RELATIVE_PATH, mediaType.relativePath)
             put(MediaStore.Video.Media.IS_PENDING, 1)
+        } else ContentValues().apply {
+            put(MediaStore.Audio.Media.DISPLAY_NAME, file.name)
+            put(MediaStore.Audio.Media.MIME_TYPE, mediaType.mimeType)
+            put(MediaStore.Audio.Media.RELATIVE_PATH, mediaType.relativePath)
+            put(MediaStore.Audio.Media.IS_PENDING, 1)
         }
 
         val resolver = context.contentResolver
 
-        val uri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values) ?: return null
+        val uri = if(mediaType == MediaType.VIDEO) {
+            resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
+        } else {
+            resolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values)
+        } ?: return null
 
         return try {
             resolver.openOutputStream(uri).use { outputStream ->
-                videoFile.inputStream().use { inputStream ->
+                file.inputStream().use { inputStream ->
                     inputStream.copyTo(outputStream!!)
                 }
             }
             values.clear()
-            values.put(MediaStore.Video.Media.IS_PENDING, 0)
+            if(mediaType == MediaType.VIDEO) {
+                values.put(MediaStore.Video.Media.IS_PENDING, 0)
+            } else {
+                values.put(MediaStore.Audio.Media.IS_PENDING, 0)
+            }
             resolver.update(uri, values, null, null)
-            // Delete the original video file
-            videoFile.delete()
+            // Delete the original file
+            file.delete()
             uri.toString()
         } catch (e: Exception) {
-            Log.e(TAG, "saveVideoToMediaStore: Failed to save video to MediaStore: ${e.message}" )
+            Log.e(TAG, "saveFileToMediaStore: Failed to save file to MediaStore: ${e.message}" )
             null
         }
     }

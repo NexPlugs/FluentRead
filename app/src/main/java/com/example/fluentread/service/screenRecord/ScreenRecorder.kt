@@ -7,27 +7,32 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Point
+import android.hardware.display.DisplayManager
+import android.hardware.display.VirtualDisplay
 import android.media.*
 import android.media.projection.*
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
+import android.util.DisplayMetrics
 import android.util.Log
-import androidx.annotation.RequiresApi
+import android.view.WindowManager
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.app.NotificationCompat
-import com.example.fluentread.service.audio.record.AudioMediaRecorder
 import com.example.fluentread.service.file.FileHelper
+import com.example.fluentread.service.file.MediaType
 import com.example.fluentread.service.notification.NotificationHelper
 import com.example.fluentread.service.overlay.ToggleView
 import com.example.fluentread.service.overlay.screenRecordCompose.ScreenRecordCompose
 import com.example.fluentread.service.overlay.screenRecordCompose.ScreenRecordViewModel
 import com.example.fluentread.service.screenRecord.models.ScreenRecordResult
 import com.example.fluentread.service.screenRecord.models.ScreenRecordState
+import com.example.fluentread.utils.parcelable
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import java.io.File
 import javax.inject.Inject
 
@@ -59,14 +64,15 @@ class ScreenRecorder : Service(), AppScreenRecorder {
 
     private val localBinder: LocalBinder = LocalBinder()
     private val localBroadcastReceiver: LocalBroadcastReceiver = LocalBroadcastReceiver()
+    private var mediaPermission: Intent? = null
 
 
     // MediaRecorder and related resources
     private var mediaRecorder: MediaRecorder? = null
         set(value) {
             value?.apply {
-                onErrorListener?.let { setOnErrorListener(it) }
-                onInfoListener?.let { setOnInfoListener(it) }
+                onErrorListener?.let { value.setOnErrorListener(it) }
+                onInfoListener?.let { value.setOnInfoListener(it) }
             }
             field = value
         }
@@ -74,6 +80,9 @@ class ScreenRecorder : Service(), AppScreenRecorder {
     private var mediaProjection: MediaProjection? = null
     private var mediaProjectionManager: MediaProjectionManager? = null
     private var mediaProjectionCallBack: MediaProjection.Callback? = null
+    private var virtualDisplay: VirtualDisplay? = null
+    private lateinit var displayMetrics: DisplayMetrics
+    private lateinit var windowManager: WindowManager
 
     // Recording state and timing
     private var recordingStartTime: Long? = null
@@ -110,14 +119,21 @@ class ScreenRecorder : Service(), AppScreenRecorder {
 
     // State helpers
     private var isInitialMedia: Boolean = false
-    private val recordAvailable: Boolean get() = mediaProjection != null && outPutFile != null
 
     override fun onBind(intent: Intent?): IBinder? = localBinder
 
     override fun onCreate() {
         super.onCreate()
+        Log.d(TAG, "onCreate: ScreenRecorder Service created")
         INSTANCE = this
         mediaProjectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+
+        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        displayMetrics = DisplayMetrics()
+
+        // NOTE: getRealMetrics is deprecated in API 30, but still used for compatibility
+        @Suppress("DEPRECATION")
+        windowManager.defaultDisplay.getRealMetrics(displayMetrics)
 
         // Init local broadcast receiver for handling system events
         val intentFilter = IntentFilter()
@@ -140,11 +156,11 @@ class ScreenRecorder : Service(), AppScreenRecorder {
                 RecordingActivity.ACTION_START -> {
                     Log.d(TAG, "Received start action")
 
+                    mediaPermission = intent.parcelable(Intent.EXTRA_INTENT)
+
                     startNotificationForeground()
                     onCreateAndShowScreenRecordToggle()
-                    // Get recording name from intent extras
-                    val recordingName = intent.getStringExtra("recording_name") ?: "screen_recording_${System.currentTimeMillis()}.mp4"
-                    startRecording(recordingName, intent)
+
                     return START_STICKY
                 }
                 RecordingActivity.ACTION_STOP -> {
@@ -155,7 +171,6 @@ class ScreenRecorder : Service(), AppScreenRecorder {
                 RecordingActivity.ACTION_CANCEL -> {
                     Log.d(TAG, "Received cancel action")
                     release()
-                    destroyMediaProjection()
                     stopSelf()
                 }
                 else -> Log.w(TAG, "Unknown action received: ${intent.action}")
@@ -175,15 +190,18 @@ class ScreenRecorder : Service(), AppScreenRecorder {
                     ScreenRecordCompose(
                         screenRecordViewModel = screenRecordViewModel,
                         onStartRecording = {
-                            val recordingName = "screen_recording_${System.currentTimeMillis()}.mp4"
-                            val captureIntent = mediaProjectionManager?.createScreenCaptureIntent()
-                            captureIntent?.putExtra("recording_name", recordingName)
-                            captureIntent?.let { intent ->
-                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                startActivity(intent)
+                            screenRecordViewModel.setIsRecording(true)
+                            if(mediaPermission == null) {
+                                Log.e(TAG, "Media projection permission is null, cannot start recording.")
+                                return@ScreenRecordCompose
                             }
+                            val recordingName = "screen_recording_${System.currentTimeMillis()}.mp4"
+                            startRecording(recordingName, mediaPermission!!)
                         },
-                        onStopRecording = { stopRecording() },
+                        onStopRecording = {
+                            screenRecordViewModel.setIsRecording(isRecording = false)
+                            stopRecording()
+                        },
                     )
                 }
             })
@@ -244,19 +262,30 @@ class ScreenRecorder : Service(), AppScreenRecorder {
         Log.d(TAG, "Initializing MediaProjection and MediaRecorder. File path: ${savedFile.absolutePath}")
 
         release()
-        mediaRecorder = buildMediaRecorder().apply {
-            setVideoSource(MediaRecorder.VideoSource.SURFACE)
-            setAudioSource(MediaRecorder.AudioSource.MIC)
-            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-            setOutputFile(savedFile.absolutePath)
-            setVideoEncodingBitRate(8 * 1000 * 1000)
-            setVideoEncoder(MediaRecorder.VideoEncoder.H264)
-            setVideoSize(1920, 1080)
-            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-            setAudioEncodingBitRate(320 * 1000)
-            setAudioSamplingRate(48000)
-            setVideoFrameRate(30)
-            prepare()
+        try {
+            mediaRecorder = buildMediaRecorder().apply {
+                setVideoSource(MediaRecorder.VideoSource.SURFACE)
+                setAudioSource(MediaRecorder.AudioSource.MIC)
+                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                setOutputFile(savedFile.absolutePath)
+                setVideoEncodingBitRate(8 * 1000 * 1000)
+                setVideoSize(displayMetrics.widthPixels, displayMetrics.heightPixels)
+                setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                setAudioEncodingBitRate(320 * 1000)
+                setAudioSamplingRate(48000)
+                setVideoFrameRate(30)
+            }
+            mediaRecorder?.setOnErrorListener {
+                what, extra, _ ->
+                Log.e(TAG, "MediaRecorder error occurred. What: $what, Extra: $extra")
+            }
+            mediaRecorder?.prepare()
+
+        } catch (e: Error) {
+            Log.e(TAG, "Error preparing MediaRecorder: ${e.message}", e)
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception preparing MediaRecorder: ${e.message}", e)
         }
         screenRecordState = ScreenRecordState.PREPARED
         isInitialMedia = true
@@ -269,7 +298,6 @@ class ScreenRecorder : Service(), AppScreenRecorder {
         }
         runCatching {
             FileHelper.createFileInCache(applicationContext, fileName = recordingName)?.let { file ->
-
                 outPutFile = file
                 mediaProjection = mediaProjectionManager?.getMediaProjection(Activity.RESULT_OK, data)
                 mediaProjectionCallBack = object : MediaProjection.Callback() {
@@ -288,13 +316,28 @@ class ScreenRecorder : Service(), AppScreenRecorder {
                 }
                 mediaProjection?.registerCallback(mediaProjectionCallBack!!, null)
                 initMediaProjection(file)
+                virtualDisplay = createVirtualDisplay()
                 mediaRecorder?.start()
                 screenRecordState = ScreenRecordState.RECORDING
+
+                Log.d(TAG, "Screen recording started. Saving to file: ${file.absolutePath} $mediaProjection ${virtualDisplay?.surface}" )
             }
         }.onFailure { err ->
             Log.e(TAG, "Error initializing MediaProjection: ${err.message}", err)
             release()
         }
+    }
+
+
+    /** Create virtual display for screen recording. */
+    private fun createVirtualDisplay(): VirtualDisplay? {
+        mediaProjection ?: return null
+        return mediaProjection!!.createVirtualDisplay(
+            TAG, displayMetrics.widthPixels,
+            displayMetrics.heightPixels, displayMetrics.densityDpi,
+            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+            mediaRecorder?.surface, null, null
+        )
     }
 
     override fun stopRecording(): ScreenRecordResult {
@@ -304,10 +347,11 @@ class ScreenRecorder : Service(), AppScreenRecorder {
         }
         return runCatching {
             val duration = calculateDuration()
-            release()
-            destroyMediaProjection()
+            runBlocking(Dispatchers.IO) {
+                release()
+            }
 
-            val recordPath = FileHelper.saveVideoToMediaStore(applicationContext, outPutFile)
+            val recordPath = FileHelper.saveFileToMediaStore(applicationContext, outPutFile, mediaType = MediaType.VIDEO)
 
             @Suppress("DEPRECATION")
             stopForeground(true)
@@ -319,7 +363,6 @@ class ScreenRecorder : Service(), AppScreenRecorder {
             Log.d(TAG, "Screen recording stopped. File: ${result.filePath}, Duration: ${result.durationMillis} ms, Size: ${result.fileSizeBytes} bytes")
             outPutFile = null
 
-            screenRecordViewModel.setIsRecording(isRecording = false)
             result
         }.getOrElse { err ->
             Log.e(TAG, "Error stopping screen recording: ${err.message}", err)
@@ -370,29 +413,48 @@ class ScreenRecorder : Service(), AppScreenRecorder {
         }
     }
 
-    /** Release MediaRecorder and MediaProjection resources. */
+    /** Release MediaRecorder and MediaProjection resources safely. */
     private fun release() {
-        mediaRecorder ?: return
+        val recorder = mediaRecorder ?: return
         try {
-            if(isRecording()) {
-                mediaRecorder?.stop()
+            if (screenRecordState == ScreenRecordState.RECORDING) {
+                Log.d(TAG, "Attempting to stop MediaRecorder safely...")
+
+                Thread.sleep(250)
+
+                if (mediaProjection == null || virtualDisplay?.surface == null) {
+                    Log.w(TAG, "Projection or surface lost before stop(), skipping stop. $mediaProjection $virtualDisplay")
+                } else {
+                    try {
+                        recorder.setOnErrorListener(null)
+                        recorder.setOnInfoListener(null)
+                        recorder.stop()
+                        Log.d(TAG, "MediaRecorder stopped successfully.")
+                    } catch (e: RuntimeException) {
+                        Log.e(TAG, "RuntimeException stopping MediaRecorder (likely stop failed -1007): ${e.message}")
+                    }
+                }
             } else {
-                Log.d(TAG, "MediaRecorder is not recording. Skipping stop.")
+                Log.d(TAG, "MediaRecorder is not recording. Current state: $screenRecordState, skipping stop().")
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error stopping MediaRecorder: ${e.message}", e)
+        } catch (e: IllegalStateException) {
+            Log.e(TAG, "IllegalStateException stopping MediaRecorder: ${e.message}", e)
         } finally {
             try {
-                mediaRecorder?.reset()
-                mediaRecorder?.release()
+                recorder.reset()
+                recorder.release()
+                Log.d(TAG, "MediaRecorder reset and released.")
             } catch (e: Exception) {
                 Log.e(TAG, "Error releasing MediaRecorder: ${e.message}", e)
             }
             mediaRecorder = null
+            virtualDisplay?.release()
+            virtualDisplay = null
             screenRecordState = ScreenRecordState.IDLE
-            Log.d(TAG, "MediaRecorder resources released.")
+            destroyMediaProjection()
         }
     }
+
 
     /** Destroy MediaProjection and unregister callback. */
     private fun destroyMediaProjection() {
@@ -420,13 +482,13 @@ class ScreenRecorder : Service(), AppScreenRecorder {
             retriever.setDataSource(file.toURI().toString())
             retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
         } catch (e: Exception) {
-            Log.e(AudioMediaRecorder.TAG, "Failed to get media duration: ${e.message}", e)
+            Log.e(TAG, "Failed to get media duration: ${e.message}", e)
             0L
         } finally {
             try {
                 retriever.release()
             } catch (error: Throwable) {
-                Log.e(AudioMediaRecorder.TAG, "Failed to release MediaMetadataRetriever: ${error.message}", error)
+                Log.e(TAG, "Failed to release MediaMetadataRetriever: ${error.message}", error)
             }
         }
     }
@@ -451,6 +513,4 @@ class ScreenRecorder : Service(), AppScreenRecorder {
     private fun pauseTiming() {
         pauseStartTime = System.currentTimeMillis()
     }
-
-
 }

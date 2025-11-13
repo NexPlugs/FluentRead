@@ -66,6 +66,41 @@ fun AudioPlayScreen(
             )
         }
 
+
+        BuildButton(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp, vertical = 16.dp)
+                .align(Alignment.CenterHorizontally),
+            color = MaterialTheme.colorScheme.primary,
+            onPress = {
+                Log.d("TAG", "AudioPlayScreen: Pausing audio")
+                controller.startRecording()
+            }
+        ) {
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                text = "Start audi recording", textAlign = TextAlign.Center
+            )
+        }
+
+        BuildButton(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp, vertical = 16.dp)
+                .align(Alignment.CenterHorizontally),
+            color = MaterialTheme.colorScheme.primary,
+            onPress = {
+                Log.d("TAG", "AudioPlayScreen: Stopping audio")
+                controller.stopRecording()
+            }
+        ) {
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                text = "Stop audio recording", textAlign = TextAlign.Center
+            )
+        }
+
         BuildButton(
             modifier = Modifier
                 .fillMaxWidth()

@@ -8,6 +8,7 @@ import android.util.Log
 import com.example.fluentread.service.audio.models.RecordResult
 import com.example.fluentread.service.audio.models.getMimType
 import com.example.fluentread.service.file.FileHelper
+import com.example.fluentread.service.file.MediaType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -27,7 +28,7 @@ class AudioMediaRecorder(
     /**
      * Application context.
      */
-    private val context: Context,
+     val context: Context,
     /**
      * * Audio source for recording. Default is microphone.
      * MIC: use the device's microphone.
@@ -142,13 +143,9 @@ class AudioMediaRecorder(
      * Listener for error events from the MediaRecorder.
      */
     private var onErrorListener: MediaRecorder.OnErrorListener? = null
-
     private var onRecordStartedListener: AppMediaRecorder.OnRecordStarted? = null
-
     private var onRecordStoppedListener: AppMediaRecorder.OnRecordStopped? = null
-
     private var onCurrentRecordDurationChangeListener: AppMediaRecorder.OnCurrentRecordDurationChange? = null
-
     private var onMediaRecorderStateChangeListener: AppMediaRecorder.OnMediaRecorderStateChange? = null
 
 
@@ -194,7 +191,7 @@ class AudioMediaRecorder(
      * @throws IllegalStateException if starting the recording fails.
      */
     override fun startAudioRecording(
-        recordingName: String,
+        recordingName: String?,
         amplitudePollingInterval: Long,
     ) {
         if(mediaRecorder == null) {
@@ -206,7 +203,7 @@ class AudioMediaRecorder(
             // Create or get the file to save the recording
             FileHelper.createFileInCache(
                 context = context,
-                fileName = recordingName,
+                fileName = recordingName ?: "audio_recording_${System.currentTimeMillis()}.aac",
             )?.let { it ->
                 recordingFile = it
 
@@ -257,11 +254,14 @@ class AudioMediaRecorder(
             // endregion
 
             release()
+
+            val recordPath = FileHelper.saveFileToMediaStore(context, recordingFile, MediaType.AUDIO)
+
             onRecordStoppedListener?.onRecordStopped()
 
             val result = RecordResult(
                 success = true,
-                filePath = recordingFile?.absolutePath,
+                filePath = recordPath,
                 mimeType =  audiEncoder.getMimType(),
                 extraData = mapOf(
                     "duration_ms" to duration,
@@ -272,7 +272,7 @@ class AudioMediaRecorder(
                 fileName = recordingFile?.name,
                 duration = duration
             )
-            Log.d(TAG, "stopRecording: Audio recording stopped successfully. File saved at: ${recordingFile?.absolutePath}")
+            Log.d(TAG, "stopRecording: Audio recording stopped successfully. File saved at: $recordPath")
             result
         }.getOrElse { err ->
             Log.e(TAG, "stopRecording: Failed to stop audio recording: ${err.message}", err)
