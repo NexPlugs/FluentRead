@@ -35,6 +35,28 @@ enum class MediaType {
             VIDEO -> "Movies/FluentRead"
             AUDIO -> "Music/FluentRead"
         }
+
+    /** Generates ContentValues for inserting media into MediaStore. */
+    fun contentValues(fileName: String): ContentValues = when(this) {
+            VIDEO -> ContentValues().apply {
+                put(MediaStore.Video.Media.DISPLAY_NAME, fileName)
+                put(MediaStore.Video.Media.MIME_TYPE, mimeType)
+                put(MediaStore.Video.Media.RELATIVE_PATH, relativePath)
+                put(MediaStore.Video.Media.IS_PENDING, 1)
+            }
+            AUDIO -> ContentValues().apply {
+                put(MediaStore.Audio.Media.DISPLAY_NAME, fileName)
+                put(MediaStore.Audio.Media.MIME_TYPE, mimeType)
+                put(MediaStore.Audio.Media.RELATIVE_PATH, relativePath)
+                put(MediaStore.Audio.Media.IS_PENDING, 1)
+            }
+        }
+    /** Returns the content URI associated with the media type. */
+    val uri: Uri
+        get() = when(this) {
+            VIDEO -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+            AUDIO -> MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+        }
 }
 
 /**
@@ -113,25 +135,12 @@ object FileHelper {
     fun saveFileToMediaStore(context: Context, file: File?, mediaType: MediaType): String? {
         file ?: return null
 
-        val values = if(mediaType == MediaType.VIDEO) ContentValues().apply {
-            put(MediaStore.Video.Media.DISPLAY_NAME, file.name)
-            put(MediaStore.Video.Media.MIME_TYPE, mediaType.mimeType)
-            put(MediaStore.Video.Media.RELATIVE_PATH, mediaType.relativePath)
-            put(MediaStore.Video.Media.IS_PENDING, 1)
-        } else ContentValues().apply {
-            put(MediaStore.Audio.Media.DISPLAY_NAME, file.name)
-            put(MediaStore.Audio.Media.MIME_TYPE, mediaType.mimeType)
-            put(MediaStore.Audio.Media.RELATIVE_PATH, mediaType.relativePath)
-            put(MediaStore.Audio.Media.IS_PENDING, 1)
-        }
+        val values = mediaType.contentValues(file.name)
 
         val resolver = context.contentResolver
 
-        val uri = if(mediaType == MediaType.VIDEO) {
-            resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
-        } else {
-            resolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values)
-        } ?: return null
+        val uri = resolver.insert(mediaType.uri, values)
+            ?: return null
 
         return try {
             resolver.openOutputStream(uri).use { outputStream ->

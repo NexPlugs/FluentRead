@@ -129,7 +129,7 @@ class ScreenRecorder : Service(), AppScreenRecorder {
         mediaProjectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        displayMetrics = DisplayMetrics()
+        displayMetrics = resources.displayMetrics
 
         // NOTE: getRealMetrics is deprecated in API 30, but still used for compatibility
         @Suppress("DEPRECATION")
