@@ -1,6 +1,8 @@
 package com.example.fluentread.service.audio.record
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
 import android.media.MediaMetadataRetriever
 import android.media.MediaRecorder
 import android.os.Build
@@ -84,6 +86,7 @@ class AudioMediaRecorder(
         const val TAG = "DefaultMediaRecorder"
     }
 
+
     /**
      * Current state of the MediaRecorder.
      */
@@ -106,6 +109,9 @@ class AudioMediaRecorder(
      * Coroutine scope for handling audio recording operations.
      */
     private val recordCoroutine: CoroutineScope = CoroutineScope(Dispatchers.IO)
+
+    // Broadcast receiver to handle system events
+    private val localBroadcastReceiver: LocalBroadcastReceiver = LocalBroadcastReceiver()
 
     /**
      * MediaRecorder instance for audio recording.
@@ -162,6 +168,23 @@ class AudioMediaRecorder(
         @Suppress("DEPRECATION")
         return MediaRecorder()
     }
+
+    init {
+        registerBroadcastReceiver()
+    }
+
+    fun registerBroadcastReceiver() {
+        try {
+            val intentFilter = android.content.IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_OFF)
+                addAction(Intent.ACTION_SHUTDOWN)
+            }
+            context.registerReceiver(localBroadcastReceiver, intentFilter)
+        } catch (e: Exception) {
+            Log.e(TAG, "registerBroadcastReceiver: Failed to register broadcast receiver: ${e.message}", e)
+        }
+    }
+
 
     /**
      * Initializes the MediaRecorder for audio recording with the specified save file.
@@ -273,6 +296,11 @@ class AudioMediaRecorder(
                 duration = duration
             )
             Log.d(TAG, "stopRecording: Audio recording stopped successfully. File saved at: $recordPath")
+            try {
+                context.unregisterReceiver(localBroadcastReceiver)
+            } catch (e: Exception) {
+                Log.e(TAG, "stopRecording: Failed to unregister broadcast receiver: ${e.message}", e)
+            }
             result
         }.getOrElse { err ->
             Log.e(TAG, "stopRecording: Failed to stop audio recording: ${err.message}", err)
@@ -380,5 +408,19 @@ class AudioMediaRecorder(
 
     override fun setOnMediaRecorderStateChangeListener(listener: AppMediaRecorder.OnMediaRecorderStateChange) {
         this.onMediaRecorderStateChangeListener = listener
+    }
+
+    private inner class LocalBroadcastReceiver: BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            intent ?: return
+            when(intent.action) {
+                Intent.ACTION_SCREEN_OFF, Intent.ACTION_SHUTDOWN -> {
+                    if(mediaRecorderState == MediaRecorderState.RECORDING) {
+                        Log.d(TAG, "onReceive: Received ${intent.action}, stopping recording.")
+                        stopRecording()
+                    }
+                }
+            }
+        }
     }
 }

@@ -145,10 +145,11 @@ class ScreenRecorder : Service(), AppScreenRecorder {
         windowManager.defaultDisplay.getRealMetrics(displayMetrics)
 
         // Init local broadcast receiver for handling system events
-        val intentFilter = IntentFilter()
-        intentFilter.addAction(Intent.ACTION_SCREEN_OFF)
-        intentFilter.addAction(Intent.ACTION_SHUTDOWN)
-        intentFilter.addAction(Intent.ACTION_DELETE)
+        val intentFilter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SHUTDOWN)
+            addAction(Intent.ACTION_DELETE)
+        }
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(localBroadcastReceiver, intentFilter, RECEIVER_EXPORTED)
         } else {
@@ -337,8 +338,6 @@ class ScreenRecorder : Service(), AppScreenRecorder {
                 virtualDisplay = createVirtualDisplay()
                 mediaRecorder?.start()
                 screenRecordState = ScreenRecordState.RECORDING
-
-                Log.d(TAG, "Screen recording started. Saving to file: ${file.absolutePath} $mediaProjection ${virtualDisplay?.surface}" )
             }
         }.onFailure { err ->
             Log.e(TAG, "Error initializing MediaProjection: ${err.message}", err)
