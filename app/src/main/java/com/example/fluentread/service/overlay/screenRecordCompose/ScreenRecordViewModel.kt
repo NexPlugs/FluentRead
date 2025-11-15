@@ -1,9 +1,11 @@
 package com.example.fluentread.service.overlay.screenRecordCompose
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 
@@ -19,14 +21,19 @@ class ScreenRecordViewModel @Inject constructor(): ViewModel() {
 
 
     fun setIsRecording(isRecording: Boolean) {
-        _uiState.update {
-            it.copy(isRecording = isRecording)
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(isRecording = isRecording)
+            }
         }
     }
 
     fun setRecordingTime(recordingTime: Long) {
-        _uiState.update {
-            it.copy(recordingTime = recordingTime)
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(recordingTime = recordingTime)
+            }
+
         }
     }
 }

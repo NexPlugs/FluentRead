@@ -45,14 +45,11 @@ class ScreenRecorder : Service(), AppScreenRecorder {
 
     companion object {
         const val TAG = "ScreenRecorder"
-        const val SCREEN_RECORD_PERMISSION_CODE = 0x1234
+
         const val NOTIFICATION_ID = 0x3001
         const val NOTIFICATION_CHANNEL_ID = "screen_record_channel_id"
         const val NOTIFICATION_CHANNEL_NAME = "Screen Recording"
 
-        const val REQUEST_CODE_SCREEN_CAPTURE = 0x2001
-
-        const val REQUEST_CODE_PERMISSION = 0
 
         const val SCREEN_RECORD_CONFIG = "screen_record_config"
 
