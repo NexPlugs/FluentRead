@@ -96,6 +96,7 @@ class AppPermissions {
             isAccessibilityPermissionGranted(context)
         }, context)
 
+
         // Open the accessibility settings first
         val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
             val bundle = Bundle()
@@ -109,7 +110,6 @@ class AppPermissions {
             Log.d(TAG, "requestAccessibilityPermission: ${e.message}")
             return
         }
-
 
     }
 

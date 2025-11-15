@@ -124,11 +124,14 @@ class ScreenRecorder : Service(), AppScreenRecorder {
 
     override fun onCreate() {
         super.onCreate()
+
+        val context = this.applicationContext
+
         Log.d(TAG, "onCreate: ScreenRecorder Service created")
         INSTANCE = this
-        mediaProjectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        mediaProjectionManager = context.getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
-        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        windowManager = context.getSystemService(WINDOW_SERVICE) as WindowManager
         displayMetrics = resources.displayMetrics
 
         // NOTE: getRealMetrics is deprecated in API 30, but still used for compatibility

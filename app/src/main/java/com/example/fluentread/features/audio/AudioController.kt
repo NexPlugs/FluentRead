@@ -10,13 +10,6 @@ import javax.inject.Inject
 @HiltViewModel
 class AudioController @Inject constructor(
     private val audiRecorder: AudioMediaRecorder,
-//    private val audioPlayer: AppAudioPlayer = AppAudioPlayer(
-//        coreMediaPlayer = CoreMediaPlayerImpl(
-//            mediaBuilder = { MediaPlayer() }
-//        ),
-//        audioScope = CoroutineScope(Dispatchers.IO),
-//        autoPlay = true
-//    ),
 ): ViewModel() {
 
     fun setAudioUrl(url: String) {

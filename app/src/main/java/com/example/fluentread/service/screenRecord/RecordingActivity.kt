@@ -52,7 +52,7 @@ class RecordingActivity: AppCompatActivity() {
         mediaProjectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
         action = intent?.action
-        dataIntent = intent
+
         screenCaptureLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
         ) { onActivityResult(it) }
@@ -73,6 +73,7 @@ class RecordingActivity: AppCompatActivity() {
         Log.d(TAG, "onActivityResult: Screen capture intent result received with resultCode: ${activityResult.resultCode}")
         if(activityResult.resultCode == RESULT_OK) {
             Log.d(TAG, "onActivityResult: Result OK, starting screen recording")
+            dataIntent = activityResult.data ?: return
             val startIntent = Intent(this, ScreenRecorder::class.java).apply {
                 action = ACTION_START
                 putExtra(Intent.EXTRA_INTENT, dataIntent)
