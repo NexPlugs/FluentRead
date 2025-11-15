@@ -26,6 +26,7 @@ import com.example.fluentread.service.notification.NotificationHelper
 import com.example.fluentread.service.overlay.ToggleView
 import com.example.fluentread.service.overlay.screenRecordCompose.ScreenRecordCompose
 import com.example.fluentread.service.overlay.screenRecordCompose.ScreenRecordViewModel
+import com.example.fluentread.service.screenRecord.models.ScreenRecordConfig
 import com.example.fluentread.service.screenRecord.models.ScreenRecordResult
 import com.example.fluentread.service.screenRecord.models.ScreenRecordState
 import com.example.fluentread.utils.parcelable
@@ -52,6 +53,8 @@ class ScreenRecorder : Service(), AppScreenRecorder {
         const val REQUEST_CODE_SCREEN_CAPTURE = 0x2001
 
         const val REQUEST_CODE_PERMISSION = 0
+
+        const val SCREEN_RECORD_CONFIG = "screen_record_config"
 
         @Volatile
         var INSTANCE: ScreenRecorder? = null
@@ -120,6 +123,12 @@ class ScreenRecorder : Service(), AppScreenRecorder {
     // State helpers
     private var isInitialMedia: Boolean = false
 
+    // region === Configuration ===
+    private var screenRecordConfig: ScreenRecordConfig = ScreenRecordConfig()
+    private val enableAudio: Boolean
+        get() = screenRecordConfig.isAudioEnable
+    // endregion
+
     override fun onBind(intent: Intent?): IBinder? = localBinder
 
     override fun onCreate() {
@@ -160,6 +169,7 @@ class ScreenRecorder : Service(), AppScreenRecorder {
                     Log.d(TAG, "Received start action")
 
                     mediaPermission = intent.parcelable(Intent.EXTRA_INTENT)
+                    screenRecordConfig = intent.parcelable(SCREEN_RECORD_CONFIG) ?: ScreenRecordConfig()
 
                     startNotificationForeground()
                     onCreateAndShowScreenRecordToggle()
@@ -236,7 +246,7 @@ class ScreenRecorder : Service(), AppScreenRecorder {
             intent ?: return
             when(intent.action) {
                 // If behavior requires stopping recording on screen off or shutdown
-                Intent.ACTION_SCREEN_OFF, Intent.ACTION_SHUTDOWN -> {
+                Intent.ACTION_SHUTDOWN -> {
                     Log.d(TAG, "Screen turned off. Stopping recording if active.")
                     stopRecording()
                 }
@@ -261,23 +271,31 @@ class ScreenRecorder : Service(), AppScreenRecorder {
      * Initialize MediaProjection and MediaRecorder for screen recording.
      */
     @Throws
-    private fun initMediaProjection(savedFile: File) {
+    private fun initMediaRecorder(savedFile: File) {
         Log.d(TAG, "Initializing MediaProjection and MediaRecorder. File path: ${savedFile.absolutePath}")
 
         release()
+
+        Log.d(TAG, "ScreenRecordConfig: $screenRecordConfig")
         try {
             mediaRecorder = buildMediaRecorder().apply {
-                setVideoSource(MediaRecorder.VideoSource.SURFACE)
-                setAudioSource(MediaRecorder.AudioSource.MIC)
-                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                /** Config media source */
+                setVideoSource(screenRecordConfig.videoSource)
+                if(enableAudio) {
+                    setAudioSource(screenRecordConfig.audioSource)
+                }
+
+                setOutputFormat(screenRecordConfig.outputFormat)
                 setOutputFile(savedFile.absolutePath)
-                setVideoEncodingBitRate(8 * 1000 * 1000)
+                setVideoEncodingBitRate(screenRecordConfig.videoEncodingBitRate)
                 setVideoSize(displayMetrics.widthPixels, displayMetrics.heightPixels)
-                setVideoEncoder(MediaRecorder.VideoEncoder.H264)
-                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                setAudioEncodingBitRate(320 * 1000)
-                setAudioSamplingRate(48000)
-                setVideoFrameRate(30)
+                setVideoFrameRate(screenRecordConfig.videoFrameRate)
+                setVideoEncoder(screenRecordConfig.videoEncoder)
+                if(enableAudio) {
+                    setAudioEncoder(screenRecordConfig.audioEncoder)
+                    setAudioEncodingBitRate(screenRecordConfig.audioEncodingBitRate)
+                    setAudioSamplingRate(screenRecordConfig.audioSamplingRate)
+                }
             }
             mediaRecorder?.setOnErrorListener {
                 what, extra, _ ->
@@ -318,7 +336,7 @@ class ScreenRecorder : Service(), AppScreenRecorder {
                     }
                 }
                 mediaProjection?.registerCallback(mediaProjectionCallBack!!, null)
-                initMediaProjection(file)
+                initMediaRecorder(file)
                 virtualDisplay = createVirtualDisplay()
                 mediaRecorder?.start()
                 screenRecordState = ScreenRecordState.RECORDING

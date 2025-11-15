@@ -1,5 +1,6 @@
 package com.example.fluentread.permissions
 
+import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -208,7 +209,7 @@ class AppPermissions {
      * @param context The context to check the permission status.
      */
     fun isWriteExternalStoragePermissionGranted(context: Context): Boolean {
-        val writePermission = android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+        val writePermission = Manifest.permission.WRITE_EXTERNAL_STORAGE
         val permissionStatus = context.checkSelfPermission(writePermission)
         return permissionStatus == PackageManager.PERMISSION_GRANTED
     }
@@ -218,7 +219,7 @@ class AppPermissions {
      * @param context The context to check the permission status.
      */
     fun isCameraPermissionGranted(context: Context): Boolean {
-        val cameraPermission = android.Manifest.permission.CAMERA
+        val cameraPermission = Manifest.permission.CAMERA
         val permissionStatus = context.checkSelfPermission(cameraPermission)
         return permissionStatus == PackageManager.PERMISSION_GRANTED
     }

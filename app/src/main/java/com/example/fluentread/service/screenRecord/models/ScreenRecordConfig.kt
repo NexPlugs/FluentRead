@@ -1,11 +1,13 @@
 package com.example.fluentread.service.screenRecord.models
 
 import android.media.MediaRecorder
-
+import android.os.Parcel
+import android.os.Parcelable
 
 /**
  * Data class representing the configuration for screen recording.
  */
+@Suppress("DEPRECATION")
 data class ScreenRecordConfig(
     /** videoSource: The source of the video to be recorded. Default is SURFACE. */
     val videoSource: Int = MediaRecorder.VideoSource.SURFACE,
@@ -27,4 +29,44 @@ data class ScreenRecordConfig(
     val videoFrameRate: Int = 30,
     /** isAudioEnable: Flag indicating whether audio recording is enabled. Default is true. */
     val isAudioEnable: Boolean = true,
-)
+): Parcelable {
+    constructor(parcel: Parcel) : this(
+        videoSource = parcel.readInt(),
+        audioSource = parcel.readInt(),
+        outputFormat = parcel.readInt(),
+        videoEncodingBitRate = parcel.readInt(),
+        videoEncoder = parcel.readInt(),
+        audioEncoder = parcel.readInt(),
+        audioEncodingBitRate = parcel.readInt(),
+        audioSamplingRate = parcel.readInt(),
+        videoFrameRate = parcel.readInt(),
+        isAudioEnable = parcel.readByte() != 0.toByte(),
+    )
+    override fun writeToParcel(parcel: Parcel, flags: Int) {
+        parcel.writeInt(videoSource)
+        parcel.writeInt(audioSource)
+        parcel.writeInt(outputFormat)
+        parcel.writeInt(videoEncodingBitRate)
+        parcel.writeInt(videoEncoder)
+        parcel.writeInt(audioEncoder)
+        parcel.writeInt(audioEncodingBitRate)
+        parcel.writeInt(audioSamplingRate)
+        parcel.writeInt(videoFrameRate)
+        parcel.writeByte(if (isAudioEnable) 1 else 0)
+    }
+
+    override fun describeContents(): Int {
+        return 0
+    }
+
+    companion object CREATOR : Parcelable.Creator<ScreenRecordConfig> {
+        override fun createFromParcel(parcel: Parcel): ScreenRecordConfig {
+            return ScreenRecordConfig(parcel)
+        }
+
+        override fun newArray(size: Int): Array<ScreenRecordConfig?> {
+            return arrayOfNulls(size)
+        }
+    }
+}
+

@@ -17,6 +17,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.fluentread.features.components.BuildButton
+import com.example.fluentread.service.screenRecord.models.ScreenRecordConfig
 import com.example.fluentread.utils.launchScreenRecorder
 
 @Composable
@@ -107,7 +108,7 @@ fun AudioPlayScreen(
                 .padding(horizontal = 32.dp, vertical = 16.dp)
                 .align(Alignment.CenterHorizontally),
             color = MaterialTheme.colorScheme.primary,
-            onPress = { context.launchScreenRecorder() }
+            onPress = { context.launchScreenRecorder(ScreenRecordConfig()) }
         ) {
             Text(
                 modifier = Modifier.fillMaxWidth(),

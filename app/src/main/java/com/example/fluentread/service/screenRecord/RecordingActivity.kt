@@ -5,6 +5,7 @@ import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
+import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.os.IBinder
@@ -16,6 +17,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.example.fluentread.permissions.AppPermissions
 import com.example.fluentread.service.file.FileHelper
+import com.example.fluentread.service.screenRecord.models.ScreenRecordConfig
+import com.example.fluentread.utils.parcelable
 
 /**
  * Activity to handle screen recording.
@@ -31,6 +34,8 @@ class RecordingActivity: AppCompatActivity() {
         const val ACTION_CANCEL = "com.example.fluentread.service.screenRecord.action.CANCEL"
     }
 
+    private var screenRecordConfig: ScreenRecordConfig? = ScreenRecordConfig()
+
     // MediaProjectionManager to handle screen capture intents
     private lateinit var mediaProjectionManager: MediaProjectionManager
 
@@ -44,6 +49,7 @@ class RecordingActivity: AppCompatActivity() {
     private var dataIntent: Intent? = null
 
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -52,6 +58,8 @@ class RecordingActivity: AppCompatActivity() {
         mediaProjectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
         action = intent?.action
+
+        screenRecordConfig = intent?.parcelable<ScreenRecordConfig>(key = ScreenRecorder.SCREEN_RECORD_CONFIG) ?: ScreenRecordConfig()
 
         screenCaptureLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
@@ -77,6 +85,7 @@ class RecordingActivity: AppCompatActivity() {
             val startIntent = Intent(this, ScreenRecorder::class.java).apply {
                 action = ACTION_START
                 putExtra(Intent.EXTRA_INTENT, dataIntent)
+                putExtra(ScreenRecorder.SCREEN_RECORD_CONFIG, screenRecordConfig)
             }
             startService(startIntent)
         } else {
@@ -147,7 +156,8 @@ class RecordingActivity: AppCompatActivity() {
         deviceId: Int
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults, deviceId)
-        if(grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+        Log.d(TAG, "onRequestPermissionsResult: Received permission result for requestCode: $requestCode")
+        if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             createScreenCaptureIntent()
         } else {
             // Permission denied, handle accordingly

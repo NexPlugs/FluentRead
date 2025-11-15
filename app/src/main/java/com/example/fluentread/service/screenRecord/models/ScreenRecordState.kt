@@ -5,5 +5,4 @@ enum class ScreenRecordState {
     PREPARED,
     RECORDING,
     PAUSED,
-    SAVING,
 }
