@@ -36,6 +36,9 @@ import com.example.fluentread.utils.parcelable
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import javax.inject.Inject
@@ -118,7 +121,7 @@ class ScreenRecorder : Service(), AppScreenRecorder {
     private var onCaptureContentVisibilityListener: AppScreenRecorder.OnCaptureContentVisibilityListener? = null
 
     // Coroutine scope for background tasks
-    private val recordCoroutine = CoroutineScope(Dispatchers.IO)
+    private val recordCoroutine = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     // State helpers
     private var isInitialMedia: Boolean = false
@@ -201,19 +204,8 @@ class ScreenRecorder : Service(), AppScreenRecorder {
                 setContent {
                     ScreenRecordCompose(
                         screenRecordViewModel = screenRecordViewModel,
-                        onStartRecording = {
-                            screenRecordViewModel.setIsRecording(true)
-                            if(mediaPermission == null) {
-                                Log.e(TAG, "Media projection permission is null, cannot start recording.")
-                                return@ScreenRecordCompose
-                            }
-                            val recordingName = "screen_recording_${System.currentTimeMillis()}.mp4"
-                            startRecording(recordingName, mediaPermission!!)
-                        },
-                        onStopRecording = {
-                            screenRecordViewModel.setIsRecording(isRecording = false)
-                            stopRecording()
-                        },
+                        onStartRecording = {},
+                        onStopRecording = {},
                     )
                 }
             })
@@ -225,6 +217,7 @@ class ScreenRecorder : Service(), AppScreenRecorder {
         super.onDestroy()
         release()
 
+        recordCoroutine.cancel()
         unregisterReceiver(localBroadcastReceiver)
     }
 
@@ -311,38 +304,49 @@ class ScreenRecorder : Service(), AppScreenRecorder {
         isInitialMedia = true
     }
 
-    override fun startRecording(recordingName: String, data: Intent) {
+    override fun startRecording(recordingName: String?) {
+        val name = recordingName ?: "screen_recording_${System.currentTimeMillis()}.mp4"
+        recordCoroutine.launch {
+            startRecordingInternal(name)
+        }
+    }
+
+    /** Start screen recording with the given name. */
+    private fun startRecordingInternal(recordingName: String) {
+        mediaPermission ?: return
         if (isRecording() || mediaProjectionManager == null) {
             Log.w(TAG, "Screen recording is already in progress.")
             return
         }
-        runCatching {
-            FileHelper.createFileInCache(applicationContext, fileName = recordingName)?.let { file ->
-                outPutFile = file
-                mediaProjection = mediaProjectionManager?.getMediaProjection(Activity.RESULT_OK, data)
-                mediaProjectionCallBack = object : MediaProjection.Callback() {
-                    override fun onStop() {
-                        super.onStop()
-                        onMediaProjectionStopListener?.onStop()
+        recordCoroutine.launch {
+            runCatching {
+                FileHelper.createFileInCache(applicationContext, fileName = recordingName)?.let { file ->
+                    outPutFile = file
+                    mediaProjection = mediaProjectionManager?.getMediaProjection(Activity.RESULT_OK, mediaPermission!!)
+                    mediaProjectionCallBack = object : MediaProjection.Callback() {
+                        override fun onStop() {
+                            super.onStop()
+                            onMediaProjectionStopListener?.onStop()
+                        }
+                        override fun onCapturedContentResize(width: Int, height: Int) {
+                            super.onCapturedContentResize(width, height)
+                            onCapturedContentListener?.onCapturedContent(width, height)
+                        }
+                        override fun onCapturedContentVisibilityChanged(isVisible: Boolean) {
+                            super.onCapturedContentVisibilityChanged(isVisible)
+                            onCaptureContentVisibilityListener?.onContentVisibilityChanged(isVisible)
+                        }
                     }
-                    override fun onCapturedContentResize(width: Int, height: Int) {
-                        super.onCapturedContentResize(width, height)
-                        onCapturedContentListener?.onCapturedContent(width, height)
-                    }
-                    override fun onCapturedContentVisibilityChanged(isVisible: Boolean) {
-                        super.onCapturedContentVisibilityChanged(isVisible)
-                        onCaptureContentVisibilityListener?.onContentVisibilityChanged(isVisible)
-                    }
+                    mediaProjection?.registerCallback(mediaProjectionCallBack!!, null)
+                    initMediaRecorder(file)
+                    virtualDisplay = createVirtualDisplay()
+                    mediaRecorder?.start()
+                    screenRecordState = ScreenRecordState.RECORDING
                 }
-                mediaProjection?.registerCallback(mediaProjectionCallBack!!, null)
-                initMediaRecorder(file)
-                virtualDisplay = createVirtualDisplay()
-                mediaRecorder?.start()
-                screenRecordState = ScreenRecordState.RECORDING
+            }.onFailure { err ->
+                Log.e(TAG, "Error initializing MediaProjection: ${err.message}", err)
+                release()
             }
-        }.onFailure { err ->
-            Log.e(TAG, "Error initializing MediaProjection: ${err.message}", err)
-            release()
         }
     }
 
@@ -358,16 +362,21 @@ class ScreenRecorder : Service(), AppScreenRecorder {
         )
     }
 
-    override fun stopRecording(): ScreenRecordResult {
+    override fun stopRecording() {
+        recordCoroutine.launch { stopRecordingInternal() }
+    }
+
+
+    /** Stop screen recording and return result. */
+    private fun stopRecordingInternal() : ScreenRecordResult{
+
         if (!isRecording()) {
             Log.w(TAG, "No active screen recording to stop.")
             throw IllegalStateException("No active screen recording to stop.")
         }
         return runCatching {
             val duration = calculateDuration()
-            runBlocking(Dispatchers.IO) {
-                release()
-            }
+            release()
 
             val recordPath = FileHelper.saveFileToMediaStore(applicationContext, outPutFile, mediaType = MediaType.VIDEO)
 
@@ -387,6 +396,7 @@ class ScreenRecorder : Service(), AppScreenRecorder {
             throw err
         }
     }
+
 
     override fun pause() {
         mediaRecorder?.pause()

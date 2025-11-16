@@ -13,10 +13,10 @@ interface AppScreenRecorder {
      * @param recordingName The name to assign to the recording.
      * @param intent The intent containing screen capture permissions.
      */
-    fun startRecording(recordingName: String, intent: Intent)
+    fun startRecording(recordingName: String? = null)
 
-    /** Stops the ongoing screen recording and returns the result. */
-    fun stopRecording(): ScreenRecordResult
+    /** Stops the ongoing screen recording. */
+    fun stopRecording()
 
     /** Pauses the ongoing screen recording. */
     fun pause()

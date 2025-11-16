@@ -2,6 +2,8 @@ package com.example.fluentread.service.overlay.screenRecordCompose
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.fluentread.service.screenRecord.ScreenRecorder
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -20,20 +22,18 @@ class ScreenRecordViewModel @Inject constructor(): ViewModel() {
     val state: StateFlow<ScreenRecordDataView> = _uiState
 
 
-    fun setIsRecording(isRecording: Boolean) {
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(isRecording = isRecording)
+    fun toggleRecord() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val isRecording = _uiState.value.isRecording
+
+            if(isRecording) {
+                ScreenRecorder.getInstance()?.stopRecording()
+            } else {
+                ScreenRecorder.getInstance()?.startRecording()
             }
+
+            _uiState.update { it.copy(isRecording = !isRecording) }
         }
     }
 
-    fun setRecordingTime(recordingTime: Long) {
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(recordingTime = recordingTime)
-            }
-
-        }
-    }
 }

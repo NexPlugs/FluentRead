@@ -20,12 +20,7 @@ class AudioController @Inject constructor(
 //        audioPlayer.play(url , 1)
     }
 
-    fun startRecord() {
-        ScreenRecorder.getInstance()?.startRecording(
-            recordingName = "FluentRead_Audio_Record",
-            data = Intent()
-        )
-    }
+    fun startRecord() {}
 
     fun stopRecord() {
         ScreenRecorder.getInstance()?.stopRecording()
