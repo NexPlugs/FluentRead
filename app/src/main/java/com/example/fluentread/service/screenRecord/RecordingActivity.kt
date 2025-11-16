@@ -1,6 +1,5 @@
 package com.example.fluentread.service.screenRecord
 
-import android.Manifest
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
@@ -26,7 +25,7 @@ class RecordingActivity: AppCompatActivity() {
     companion object {
         const val TAG = "RecordingActivity"
 
-        const val ACTION_START = "com.example.fluentread.service.screenRecord.action.START"
+        const val ACTION_START = "com.example.fluentread.service.scrxeenRecord.action.START"
         const val ACTION_STOP = "com.example.fluentread.service.screenRecord.action.STOP"
         const val ACTION_CANCEL = "com.example.fluentread.service.screenRecord.action.CANCEL"
     }
@@ -85,6 +84,8 @@ class RecordingActivity: AppCompatActivity() {
                 putExtra(ScreenRecorder.SCREEN_RECORD_CONFIG, screenRecordConfig)
             }
             startService(startIntent)
+
+            this.finish()
         } else {
             FileHelper.logVideoFileInfo(this.applicationContext)
         }
@@ -128,26 +129,7 @@ class RecordingActivity: AppCompatActivity() {
 
     // Checks and requests necessary permissions before starting screen recording.
     private fun checkPermissionThenStart() {
-        val list = mutableListOf<String>()
-
-        if(!ScreenRecordPermission.isRecordAudioPermissionGranted(this) && (screenRecordConfig?.isAudioEnable == true)) {
-            list += Manifest.permission.RECORD_AUDIO
-        }
-
-        // Read video
-        if(!ScreenRecordPermission.isReadMediaVideoPermissionGranted(this)) {
-            list += if(android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                Manifest.permission.READ_MEDIA_VIDEO
-            } else {
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            }
-        }
-
-        // Write (only < Android 10)
-        if(android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q &&
-            !ScreenRecordPermission.isWriteMediaVideoPermissionGranted(this)) {
-            list += Manifest.permission.WRITE_EXTERNAL_STORAGE
-        }
+        val list = ScreenRecordPermission.buildListPermissionNotGranted(this)
 
         if(list.isEmpty()) {
             Log.d(TAG, "checkPermissionThenStart: All permissions already granted")
@@ -155,8 +137,7 @@ class RecordingActivity: AppCompatActivity() {
             return
         }
         Log.d(TAG, "checkPermissionThenStart: Requesting permissions: $list")
-        val permissionsArray = list.toTypedArray()
-        permissionLauncher.launch(permissionsArray)
+        permissionLauncher.launch(list)
 
     }
 

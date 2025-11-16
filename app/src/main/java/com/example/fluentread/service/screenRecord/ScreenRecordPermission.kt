@@ -35,6 +35,9 @@ object ScreenRecordPermission {
         return res == PackageManager.PERMISSION_GRANTED
     }
 
+    /**
+     * Checks if the WRITE_MEDIA_VIDEO permission is granted.
+     */
     fun isWriteMediaVideoPermissionGranted(context: Context): Boolean {
         val permission = Manifest.permission.WRITE_EXTERNAL_STORAGE
         val res = ContextCompat.checkSelfPermission(
@@ -44,6 +47,54 @@ object ScreenRecordPermission {
         return res == PackageManager.PERMISSION_GRANTED
     }
 
+    /**
+     * Checks if the POST_NOTIFICATIONS permission is granted.
+     */
+    fun isNotificationPermissionGranted(context: Context): Boolean {
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val permission = Manifest.permission.POST_NOTIFICATIONS
+            val res = ContextCompat.checkSelfPermission(
+                context,
+                permission
+            )
+            return res == PackageManager.PERMISSION_GRANTED
+        }
+        return true
+    }
+
+    /**
+     * Builds a list of permissions that are not granted.
+     * @param context The context to check the permission status.
+     * @return An array of permission strings that are not granted.
+     */
+    fun buildListPermissionNotGranted(context: Context): Array<String> {
+        val list = mutableListOf<String>()
+
+        if(!isRecordAudioPermissionGranted(context)) {
+            list += Manifest.permission.RECORD_AUDIO
+        }
+
+        // Read video
+        if(!isReadMediaVideoPermissionGranted(context)) {
+            list += if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                Manifest.permission.READ_MEDIA_VIDEO
+            } else {
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            }
+        }
+
+        // Write (only < Android 10)
+        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
+            !isWriteMediaVideoPermissionGranted(context)) {
+            list += Manifest.permission.WRITE_EXTERNAL_STORAGE
+        }
+
+        if(!isNotificationPermissionGranted(context) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            list += Manifest.permission.POST_NOTIFICATIONS
+        }
+
+        return list.toTypedArray()
+    }
 
 }
 

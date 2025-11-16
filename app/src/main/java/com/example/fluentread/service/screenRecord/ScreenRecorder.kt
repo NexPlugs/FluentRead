@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Color
 import android.graphics.Point
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
@@ -20,6 +21,8 @@ import android.util.Log
 import android.view.WindowManager
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.app.NotificationCompat
+import com.example.fluentread.MainActivity
+import com.example.fluentread.R
 import com.example.fluentread.service.file.FileHelper
 import com.example.fluentread.service.file.MediaType
 import com.example.fluentread.service.notification.NotificationHelper
@@ -181,8 +184,6 @@ class ScreenRecorder : Service(), AppScreenRecorder {
                 }
                 RecordingActivity.ACTION_CANCEL -> {
                     Log.d(TAG, "Received cancel action")
-                    release()
-                    stopSelf()
                 }
                 else -> Log.w(TAG, "Unknown action received: ${intent.action}")
             }
@@ -370,8 +371,8 @@ class ScreenRecorder : Service(), AppScreenRecorder {
 
             val recordPath = FileHelper.saveFileToMediaStore(applicationContext, outPutFile, mediaType = MediaType.VIDEO)
 
-            @Suppress("DEPRECATION")
-            stopForeground(true)
+            stopNotificationForeground()
+
             val result = ScreenRecordResult(
                 filePath = recordPath ?: outPutFile?.absolutePath.orEmpty(),
                 durationMillis = duration,
@@ -419,14 +420,56 @@ class ScreenRecorder : Service(), AppScreenRecorder {
     /** Start foreground notification for recording. */
     private fun startNotificationForeground() {
         runCatching {
-            notificationBuilder = notificationHelper.initNotificationBuilder(
-                contentText = "Screen recording in progress",
-                contentTitle = "FluentRead Screen Recorder"
-            )
+            val intent = Intent(this, ScreenRecorder::class.java).apply {
+                action = RecordingActivity.ACTION_STOP
+            }
+
+            val stopPendingIntent = PendingIntent.getService(
+                this, 0, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+
+            val dismissIntent = Intent(this, ScreenRecorder::class.java).apply {
+                action = RecordingActivity.ACTION_CANCEL
+            }
+
+            val cancelPending = PendingIntent.getService(
+                this, 0, dismissIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+
+            // Open main application
+            val mainIntent = Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+
+            val mainPendingIntent = PendingIntent.getActivity(
+                this, 0, mainIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+
+
+            notificationBuilder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+                .setColor(Color.RED)
+                .setContentTitle("Screen Recording")
+                .setContentText("Screen recording is in progress")
+                .setSmallIcon(R.drawable.ic_record)
+                .setContentIntent(mainPendingIntent)
+                .setOngoing(true)
+                .addAction(R.drawable.ic_up, "Stop", stopPendingIntent)
+                .addAction(R.drawable.ic_down, "Cancel", cancelPending)
+
+
             notificationChannel = notificationHelper.createNotificationChannel()
             startForeground(NOTIFICATION_ID, notificationBuilder!!.build())
         }.onFailure {
             Log.e(TAG, "Failed to start foreground notification: ${it.message}", it)
+        }
+    }
+
+    private fun stopNotificationForeground() {
+        runCatching {
+            @Suppress("DEPRECATION")
+            stopForeground(true)
+        }.onFailure {
+            Log.e(TAG, "Failed to stop foreground notification: ${it.message}", it)
         }
     }
 
