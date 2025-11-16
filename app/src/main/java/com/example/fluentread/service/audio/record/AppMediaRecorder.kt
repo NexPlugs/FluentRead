@@ -37,6 +37,9 @@ interface AppMediaRecorder {
     // Sets a listener for changes in the media recorder state.
     fun setOnMediaRecorderStateChangeListener(listener: OnMediaRecorderStateChange)
 
+    // Sets a listener for polling amplitude values during recording.
+    fun setOnPollAmplitudeListener(listener: OnPollAmplitudeListener)
+
 
     /**
      * Callback interface for handling errors during recording.
@@ -79,5 +82,12 @@ interface AppMediaRecorder {
      */
     fun interface OnMediaRecorderStateChange {
         fun onStateChange(recorderState: MediaRecorderState)
+    }
+
+    /**
+     * Callback interface for polling amplitude values during recording.
+     */
+    fun interface OnPollAmplitudeListener {
+        fun onPollAmplitude(amplitude: Float)
     }
 }

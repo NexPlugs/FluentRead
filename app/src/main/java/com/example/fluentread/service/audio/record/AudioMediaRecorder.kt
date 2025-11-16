@@ -18,6 +18,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 import kotlin.jvm.Throws
+import kotlin.math.log10
 
 const val SAMPLING_RATE_16KHZ = 16000
 
@@ -137,6 +138,9 @@ class AudioMediaRecorder(
     private var recordingFile: File? = null
 
     private var trackingRecordingDurationJob: Job? = null
+    private var trackingPillingJob: Job? = null
+
+    private var pollingData = arrayListOf<Float>()
 
     // Initial all listener value
 
@@ -153,6 +157,7 @@ class AudioMediaRecorder(
     private var onRecordStoppedListener: AppMediaRecorder.OnRecordStopped? = null
     private var onCurrentRecordDurationChangeListener: AppMediaRecorder.OnCurrentRecordDurationChange? = null
     private var onMediaRecorderStateChangeListener: AppMediaRecorder.OnMediaRecorderStateChange? = null
+    private var onPollAmplitudeListener: AppMediaRecorder.OnPollAmplitudeListener? = null
 
 
     // Implement all function of media recorder
@@ -237,6 +242,7 @@ class AudioMediaRecorder(
 
                 mediaRecorderState = MediaRecorderState.RECORDING
 
+                trackingPillingData(amplitudePollingInterval)
 
                 return
             }
@@ -372,6 +378,36 @@ class AudioMediaRecorder(
     }
 
     /**
+     * Tracks the amplitude data of the recording at specified intervals.
+     * @param amplitudePollingInterval The interval in milliseconds for polling amplitude data.
+     */
+    private fun trackingPillingData(amplitudePollingInterval: Long) {
+        trackingPillingJob?.cancel()
+        trackingPillingJob = null
+
+        trackingPillingJob = recordCoroutine.launch {
+            try {
+                while (mediaRecorderState == MediaRecorderState.RECORDING) {
+                    val maxAmplitude = mediaRecorder?.maxAmplitude
+
+                    maxAmplitude ?: continue
+
+                    val db = 20 * log10(maxAmplitude.toDouble())
+                    val normalized = maxAmplitude / Short.MAX_VALUE.toFloat()
+                    Log.d(TAG, "trackingPillingData: Max Amplitude: $maxAmplitude, dB: $db, Normalized: $normalized")
+                    pollingData.add(normalized)
+
+                    onPollAmplitudeListener?.onPollAmplitude(normalized)
+
+                    delay(amplitudePollingInterval)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "trackingPillingData: Error while polling amplitude data: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
      * Gets the duration of the audio file in milliseconds.
      * @param file The audio file.
      * return Duration in milliseconds, or 0 if the file is null or an error occurs.
@@ -408,6 +444,10 @@ class AudioMediaRecorder(
 
     override fun setOnMediaRecorderStateChangeListener(listener: AppMediaRecorder.OnMediaRecorderStateChange) {
         this.onMediaRecorderStateChangeListener = listener
+    }
+
+    override fun setOnPollAmplitudeListener(listener: AppMediaRecorder.OnPollAmplitudeListener) {
+        this.onPollAmplitudeListener = listener
     }
 
     private inner class LocalBroadcastReceiver: BroadcastReceiver() {
