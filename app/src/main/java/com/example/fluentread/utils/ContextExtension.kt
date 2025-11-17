@@ -6,7 +6,7 @@ import android.os.Build.VERSION.SDK_INT
 import android.os.Parcelable
 import androidx.core.content.ContextCompat
 import com.example.fluentread.service.AppController
-import com.example.fluentread.service.screenRecord.RecordingActivity
+import com.example.fluentread.service.screenRecord.ScreenRecordActivity
 import com.example.fluentread.service.screenRecord.ScreenRecorder
 import com.example.fluentread.service.screenRecord.models.ScreenRecordConfig
 
@@ -19,8 +19,8 @@ fun Context.launchAppController() {
 
 /** Launch the screen recorder activity to start recording */
 fun Context.launchScreenRecorder(screenRecordConfig: ScreenRecordConfig) {
-    val startIntent = Intent(this, RecordingActivity::class.java).apply {
-        action = RecordingActivity.ACTION_START
+    val startIntent = Intent(this, ScreenRecordActivity::class.java).apply {
+        action = ScreenRecordActivity.ACTION_START
         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         this.putExtra(ScreenRecorder.SCREEN_RECORD_CONFIG, screenRecordConfig)
     }

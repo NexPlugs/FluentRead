@@ -39,7 +39,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import java.io.File
 import javax.inject.Inject
 
@@ -156,6 +155,7 @@ class ScreenRecorder : Service(), AppScreenRecorder {
             addAction(Intent.ACTION_SHUTDOWN)
             addAction(Intent.ACTION_DELETE)
         }
+
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(localBroadcastReceiver, intentFilter, RECEIVER_EXPORTED)
         } else {
@@ -169,7 +169,7 @@ class ScreenRecorder : Service(), AppScreenRecorder {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if(intent != null) {
             when(intent.action) {
-                RecordingActivity.ACTION_START -> {
+                ScreenRecordActivity.ACTION_START -> {
                     Log.d(TAG, "Received start action")
 
                     mediaPermission = intent.parcelable(Intent.EXTRA_INTENT)
@@ -180,12 +180,12 @@ class ScreenRecorder : Service(), AppScreenRecorder {
 
                     return START_STICKY
                 }
-                RecordingActivity.ACTION_STOP -> {
+                ScreenRecordActivity.ACTION_STOP -> {
                     Log.d(TAG, "Received stop action")
                     stopRecording()
                     stopSelf()
                 }
-                RecordingActivity.ACTION_CANCEL -> {
+                ScreenRecordActivity.ACTION_CANCEL -> {
                     Log.d(TAG, "Received cancel action")
                 }
                 else -> Log.w(TAG, "Unknown action received: ${intent.action}")
@@ -431,7 +431,7 @@ class ScreenRecorder : Service(), AppScreenRecorder {
     private fun startNotificationForeground() {
         runCatching {
             val intent = Intent(this, ScreenRecorder::class.java).apply {
-                action = RecordingActivity.ACTION_STOP
+                action = ScreenRecordActivity.ACTION_STOP
             }
 
             val stopPendingIntent = PendingIntent.getService(
@@ -439,7 +439,7 @@ class ScreenRecorder : Service(), AppScreenRecorder {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
             val dismissIntent = Intent(this, ScreenRecorder::class.java).apply {
-                action = RecordingActivity.ACTION_CANCEL
+                action = ScreenRecordActivity.ACTION_CANCEL
             }
 
             val cancelPending = PendingIntent.getService(

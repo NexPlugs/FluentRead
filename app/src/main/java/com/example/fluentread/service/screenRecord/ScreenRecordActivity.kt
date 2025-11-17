@@ -20,7 +20,7 @@ import com.example.fluentread.utils.parcelable
  * Activity to handle screen recording.
  * Currently, it does not implement any specific functionality.
  */
-class RecordingActivity: AppCompatActivity() {
+class ScreenRecordActivity: AppCompatActivity() {
 
     companion object {
         const val TAG = "RecordingActivity"
@@ -107,6 +107,7 @@ class RecordingActivity: AppCompatActivity() {
         super.onStart()
         val intent = Intent(this, ScreenRecorder::class.java)
         startService(intent)
+
         bindService(intent, localServiceConnection, BIND_AUTO_CREATE)
     }
 

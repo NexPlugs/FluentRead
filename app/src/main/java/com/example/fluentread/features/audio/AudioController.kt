@@ -1,18 +1,12 @@
 package com.example.fluentread.features.audio
 
-import android.content.Context
-import android.content.Intent
 import androidx.lifecycle.ViewModel
-import com.example.fluentread.service.audio.record.AudioMediaRecorder
 import com.example.fluentread.service.screenRecord.ScreenRecorder
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
 @HiltViewModel
-class AudioController @Inject constructor(
-    private val audiRecorder: AudioMediaRecorder,
-): ViewModel() {
+class AudioController @Inject constructor(): ViewModel() {
 
     fun setAudioUrl(url: String) { }
 
@@ -24,12 +18,8 @@ class AudioController @Inject constructor(
         ScreenRecorder.getInstance()?.stopRecording()
     }
 
-    fun startRecording() {
-        audiRecorder.startAudioRecording()
-    }
+    fun startRecording() {}
 
-    fun stopRecording() {
-        audiRecorder.stopRecording()
-    }
+    fun stopRecording() {}
 
 }

@@ -59,7 +59,7 @@
             </intent-filter>
         </activity>
 
-        <activity android:name= ".service.screenRecord.RecordingActivity"
+        <activity android:name= ".service.screenRecord.ScreenRecordActivity"
             android:theme="@style/InvisibleActivity"
             android:excludeFromRecents="true">
         </activity>
@@ -80,6 +80,11 @@
         <service android:name=".service.screenRecord.ScreenRecorder"
             android:foregroundServiceType="mediaProjection"
             android:exported="true"
+            android:enabled="true"
+            android:permission="android.permission.FOREGROUND_SERVICE"/>
+
+        <service android:name=".service.audio.record.AudioMediaRecorder"
+            android:exported="false"
             android:enabled="true"
             android:permission="android.permission.FOREGROUND_SERVICE"/>
 
