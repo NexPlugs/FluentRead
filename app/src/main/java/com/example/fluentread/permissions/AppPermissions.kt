@@ -111,7 +111,6 @@ class AppPermissions {
             Log.d(TAG, "requestAccessibilityPermission: ${e.message}")
             return
         }
-
     }
 
     fun requestOverlayPermission(activity: Activity) {

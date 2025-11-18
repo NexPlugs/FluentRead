@@ -6,6 +6,9 @@ import android.os.Build.VERSION.SDK_INT
 import android.os.Parcelable
 import androidx.core.content.ContextCompat
 import com.example.fluentread.service.AppController
+import com.example.fluentread.service.audio.AudioRecordActivity
+import com.example.fluentread.service.audio.models.AudioConfig
+import com.example.fluentread.service.audio.record.AudioMediaRecorder
 import com.example.fluentread.service.screenRecord.ScreenRecordActivity
 import com.example.fluentread.service.screenRecord.ScreenRecorder
 import com.example.fluentread.service.screenRecord.models.ScreenRecordConfig
@@ -23,6 +26,17 @@ fun Context.launchScreenRecorder(screenRecordConfig: ScreenRecordConfig) {
         action = ScreenRecordActivity.ACTION_START
         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         this.putExtra(ScreenRecorder.SCREEN_RECORD_CONFIG, screenRecordConfig)
+    }
+    startActivity(startIntent)
+}
+
+
+/** Generic inline function to get a Parcelable extra from an Intent */
+fun Context.launchAudiRecord(audioConfig: AudioConfig) {
+    val startIntent = Intent(this, AudioRecordActivity::class.java).apply {
+        action = AudioRecordActivity.ACTION_START
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        this.putExtra(AudioMediaRecorder.AUDIO_CONFIG, audioConfig)
     }
     startActivity(startIntent)
 }

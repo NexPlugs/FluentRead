@@ -65,8 +65,9 @@ data class AudioConfig(
      */
     val audiChannel: Int = MONO_CHANNEL,
 
-
+    // Popup features option
     val showAmplitudePopUp: Boolean = false,
+    val autoRecord: Boolean = true,
 ): Parcelable {
     constructor(parcel: Parcel): this(
         audioSource = parcel.readInt(),
@@ -76,6 +77,7 @@ data class AudioConfig(
         encodeBitRate = parcel.readInt(),
         audiChannel = parcel.readInt(),
         showAmplitudePopUp = parcel.readByte() != 0.toByte(),
+        autoRecord = parcel.readByte() != 0.toByte()
     )
 
 
@@ -91,6 +93,7 @@ data class AudioConfig(
         dest.writeInt(encodeBitRate)
         dest.writeInt(audiChannel)
         dest.writeByte(if (showAmplitudePopUp) 1 else 0)
+        dest.writeByte(if (autoRecord) 1 else 0)
     }
 
     companion object CREATOR : Parcelable.Creator<AudioConfig> {

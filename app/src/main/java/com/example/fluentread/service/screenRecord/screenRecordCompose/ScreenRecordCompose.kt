@@ -1,4 +1,4 @@
-package com.example.fluentread.service.overlay.screenRecordCompose
+package com.example.fluentread.service.screenRecord.screenRecordCompose
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

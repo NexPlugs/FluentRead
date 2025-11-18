@@ -1,4 +1,4 @@
-package com.example.fluentread.service.overlay.media.audioRecord
+package com.example.fluentread.service.audio.compose
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -12,36 +12,33 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
-// ───────────────────────────────────────────────────────────────
-// HIGH-LEVEL ENTRY
-// ───────────────────────────────────────────────────────────────
-
 @Composable
 fun AudioRecordCompose(
-    recordType: RecordType,
-    isRecording: Boolean,
-    modifier: Modifier = Modifier,
-    amplitude: Int = 50,
-    waveColor: Color = Color.Blue,
-    numberOfBars: Int = 5,
-    listAmplitude: List<Int> = listOf(10, 30, 50, 70, 90),
-) {
+    recordType: RecordType = RecordType.CIRCLE,
+    audioRecordViewModel: AudioViewModel,
+
+    ) {
+    val uiState = audioRecordViewModel.uiState.collectAsState().value
+
+    val modifier = Modifier
+        .padding(horizontal = 8.dp, vertical = 4.dp)
+        .fillMaxWidth()
+        .background(Color.White, RoundedCornerShape(12.dp))
+        .padding(16.dp)
+
     when (recordType) {
         RecordType.CIRCLE -> {
             AudioRecordCircleCompose(
-                isRecording = isRecording,
-                amplitude = amplitude,
-                modifier = modifier
+                modifier = modifier,
+                isRecording = uiState.isRecording,
+                amplitude = uiState.amplitudeTracking.toInt()
             )
         }
 
         RecordType.WAVE -> {
             AudioRecordWaveCompose(
-                isRecording = isRecording,
                 modifier = modifier,
-                waveColor = waveColor,
-                numberOfBars = numberOfBars,
-                listAmplitude = listAmplitude
+                isRecording = uiState.isRecording
             )
         }
     }
@@ -57,34 +54,33 @@ fun AudioRecordCircleCompose(
     isRecording: Boolean,
     amplitude: Int = 50,
 ) {
-    val maxPulseScale = remember(amplitude) {
-        1f + (amplitude.coerceIn(0, 100) / 100f * 0.5f)
+    // Convert amplitude (0–100) → scale (1f–1.5f)
+    val targetPulseScale = remember(amplitude, isRecording) {
+        if (isRecording) 1f + (amplitude.coerceIn(0, 100) / 100f * 0.5f)
+        else 1f
     }
 
-    // Pulse animation (outer)
-    val pulse by animateFloatAsState(
-        targetValue = if (isRecording) maxPulseScale else 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = 700,
-                easing = LinearEasing
-            ),
-            repeatMode = RepeatMode.Reverse
+    // Smooth pulse animation following amplitude
+    val pulseScale by animateFloatAsState(
+        targetValue = targetPulseScale,
+        animationSpec = tween(
+            durationMillis = 140,
+            easing = LinearOutSlowInEasing
         ),
-        label = "CirclePulse"
+        label = "AmplitudePulseScale"
     )
 
-    // Glow alpha
+    // Glow alpha (normal)
     val glowAlpha by animateFloatAsState(
         targetValue = if (isRecording) 0.35f else 0f,
-        animationSpec = tween(400, easing = LinearOutSlowInEasing),
+        animationSpec = tween(300, easing = LinearOutSlowInEasing),
         label = "CircleGlowAlpha"
     )
 
-    // Inner scale
+    // Inner shrink/expand
     val innerScale by animateFloatAsState(
         targetValue = if (isRecording) 1f else 0.85f,
-        animationSpec = tween(350, easing = LinearOutSlowInEasing),
+        animationSpec = tween(300, easing = LinearOutSlowInEasing),
         label = "InnerCircleScale"
     )
 
@@ -92,10 +88,10 @@ fun AudioRecordCircleCompose(
         modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
-        // Outer pulse
+        // Outer pulse following amplitude
         Box(
             modifier = Modifier
-                .size(80.dp * pulse)
+                .size(80.dp * targetPulseScale)
                 .graphicsLayer { alpha = glowAlpha }
                 .background(
                     color = Color.Red.copy(alpha = 0.3f),
@@ -141,10 +137,6 @@ fun AudioRecordWaveCompose(
 
     Box(
         modifier = modifier
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-            .fillMaxWidth()
-            .background(Color.White, RoundedCornerShape(12.dp))
-            .padding(16.dp)
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -169,9 +161,4 @@ fun AudioRecordWaveCompose(
 
 @Preview(showBackground = true)
 @Composable
-fun AudioRecordComposePreview() {
-    AudioRecordCompose(
-        recordType = RecordType.CIRCLE,
-        isRecording = true
-    )
-}
+fun AudioRecordComposePreview() { }

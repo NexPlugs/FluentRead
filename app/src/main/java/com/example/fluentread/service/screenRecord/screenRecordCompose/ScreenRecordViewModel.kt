@@ -1,4 +1,4 @@
-package com.example.fluentread.service.overlay.screenRecordCompose
+package com.example.fluentread.service.screenRecord.screenRecordCompose
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

@@ -64,6 +64,11 @@
             android:excludeFromRecents="true">
         </activity>
 
+        <activity android:name=".service.audio.AudioRecordActivity"
+            android:theme="@style/InvisibleActivity"
+            android:excludeFromRecents="true">
+        </activity>
+
         <service
             android:name=".service.accessibility.ScrollAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
@@ -83,11 +88,11 @@
             android:enabled="true"
             android:permission="android.permission.FOREGROUND_SERVICE"/>
 
-        <service android:name=".service.audio.record.AudioMediaRecorder"
-            android:exported="false"
+        <service android:name=".service.audio.AudioRecordService"
+            android:foregroundServiceType="specialUse"
+            android:exported="true"
             android:enabled="true"
             android:permission="android.permission.FOREGROUND_SERVICE"/>
-
 
 
         <service android:name=".service.AppController"

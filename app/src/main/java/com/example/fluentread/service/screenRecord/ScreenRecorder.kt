@@ -27,8 +27,8 @@ import com.example.fluentread.service.file.FileHelper
 import com.example.fluentread.service.file.MediaType
 import com.example.fluentread.service.notification.NotificationHelper
 import com.example.fluentread.service.overlay.ToggleView
-import com.example.fluentread.service.overlay.screenRecordCompose.ScreenRecordCompose
-import com.example.fluentread.service.overlay.screenRecordCompose.ScreenRecordViewModel
+import com.example.fluentread.service.screenRecord.screenRecordCompose.ScreenRecordCompose
+import com.example.fluentread.service.screenRecord.screenRecordCompose.ScreenRecordViewModel
 import com.example.fluentread.service.screenRecord.models.ScreenRecordConfig
 import com.example.fluentread.service.screenRecord.models.ScreenRecordResult
 import com.example.fluentread.service.screenRecord.models.ScreenRecordState

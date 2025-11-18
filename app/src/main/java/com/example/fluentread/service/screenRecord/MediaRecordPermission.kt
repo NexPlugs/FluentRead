@@ -6,7 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.content.ContextCompat
 
-object ScreenRecordPermission {
+object MediaRecordPermission {
     //Check  READ_MEDIA_VIDEO, WRITE_MEDIA_VIDEO permissions, RECORD_AUDIO
     const val TAG = "ScreenRecordPermission"
 
@@ -67,7 +67,7 @@ object ScreenRecordPermission {
      * @param context The context to check the permission status.
      * @return An array of permission strings that are not granted.
      */
-    fun buildListPermissionNotGranted(context: Context): Array<String> {
+    fun buildListScreenRecordPermissionNotGranted(context: Context): Array<String> {
         val list = mutableListOf<String>()
 
         if(!isRecordAudioPermissionGranted(context)) {
@@ -95,6 +95,23 @@ object ScreenRecordPermission {
 
         return list.toTypedArray()
     }
+
+
+    /**
+     * Build a list of audio record permissions that are not granted
+     * @param context The context to check the permission status.
+     * @return An array of permission strings that are not granted.
+     */
+    fun buildListAudioRecordPermissionGranted(context: Context): Array<String> {
+        val list = mutableListOf<String>()
+
+        if(!isRecordAudioPermissionGranted(context)) {
+            list += Manifest.permission.RECORD_AUDIO
+        }
+
+        return list.toTypedArray()
+    }
+
 
 }
 

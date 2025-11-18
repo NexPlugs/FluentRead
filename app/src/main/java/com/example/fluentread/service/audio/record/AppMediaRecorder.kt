@@ -64,7 +64,7 @@ interface AppMediaRecorder {
      * Callback interface for when the recording has stopped.
      */
     fun interface OnRecordStopped {
-        fun onRecordStopped()
+        fun onRecordStopped(recordResult: RecordResult?)
     }
 
     /**

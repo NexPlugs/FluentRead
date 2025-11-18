@@ -130,7 +130,7 @@ class ScreenRecordActivity: AppCompatActivity() {
 
     // Checks and requests necessary permissions before starting screen recording.
     private fun checkPermissionThenStart() {
-        val list = ScreenRecordPermission.buildListPermissionNotGranted(this)
+        val list = MediaRecordPermission.buildListScreenRecordPermissionNotGranted(this)
 
         if(list.isEmpty()) {
             Log.d(TAG, "checkPermissionThenStart: All permissions already granted")

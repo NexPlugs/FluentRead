@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -17,7 +18,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.fluentread.features.components.BuildButton
+import com.example.fluentread.service.audio.compose.AudioRecordCircleCompose
+import com.example.fluentread.service.audio.models.AudioConfig
 import com.example.fluentread.service.screenRecord.models.ScreenRecordConfig
+import com.example.fluentread.utils.launchAudiRecord
 import com.example.fluentread.utils.launchScreenRecorder
 
 @Composable
@@ -26,6 +30,8 @@ fun AudioPlayScreen(
     controller: AudioController = hiltViewModel<AudioController>()
 ) {
     val context = LocalContext.current
+
+    val uiState: AudioControllerState = controller.uiState.collectAsState().value
 
     Column(
         modifier = modifier,
@@ -84,6 +90,14 @@ fun AudioPlayScreen(
                 text = "Start audi recording", textAlign = TextAlign.Center
             )
         }
+
+        AudioRecordCircleCompose(
+            isRecording = uiState.isRecording,
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .padding(16.dp),
+            amplitude = uiState.amplitudeTracking.toInt()
+        )
 
         BuildButton(
             modifier = Modifier

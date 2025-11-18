@@ -121,7 +121,6 @@ class AudioMediaRecorder(
     private var onPollAmplitudeListener: AppMediaRecorder.OnPollAmplitudeListener? = null
 
 
-
     /**
      * Builds and returns a MediaRecorder instance base on android version.
      */
@@ -133,7 +132,6 @@ class AudioMediaRecorder(
         @Suppress("DEPRECATION")
         return MediaRecorder()
     }
-
 
 
     /**
@@ -182,11 +180,18 @@ class AudioMediaRecorder(
                 context = context,
                 fileName = recordingName ?: "audio_recording_${System.currentTimeMillis()}.aac",
             )?.let { it ->
+
                 recordingFile = it
 
                 initialMediaRecorderForAudio(recordingFile!!)
 
-                mediaRecorder?.start()
+                try {
+                    mediaRecorder?.start()
+                } catch (e: Exception) {
+                    Log.e(TAG, "startAudioRecording: Error starting MediaRecorder: ${e.message}", e)
+                    throw e
+                }
+
                 onRecordStartedListener?.onRecordStarted()
 
                 mediaRecorderState = MediaRecorderState.RECORDING
@@ -242,7 +247,6 @@ class AudioMediaRecorder(
                 MediaType.AUDIO
             )
 
-            onRecordStoppedListener?.onRecordStopped()
 
             val result = RecordResult(
                 success = true,
@@ -257,6 +261,9 @@ class AudioMediaRecorder(
                 fileName = recordingFile?.name,
                 duration = duration
             )
+
+            onRecordStoppedListener?.onRecordStopped(result)
+
             Log.d(
                 TAG,
                 "stopRecording: Audio recording stopped successfully. File saved at: $recordPath"
@@ -299,7 +306,6 @@ class AudioMediaRecorder(
     override fun release() {
         mediaRecorder?.release()
         mediaRecorderState = MediaRecorderState.IDLE
-        onRecordStoppedListener?.onRecordStopped()
     }
 
     override fun setOnErrorListener(listener: AppMediaRecorder.OnErrorListener) {
@@ -362,6 +368,7 @@ class AudioMediaRecorder(
 
                     delay(amplitudePollingInterval)
                 }
+
             } catch (e: Exception) {
                 Log.e(
                     TAG,
