@@ -6,12 +6,12 @@ import android.os.Build.VERSION.SDK_INT
 import android.os.Parcelable
 import androidx.core.content.ContextCompat
 import com.example.fluentread.service.AppController
-import com.example.fluentread.service.audio.AudioRecordActivity
-import com.example.fluentread.service.audio.models.AudioConfig
-import com.example.fluentread.service.audio.record.AudioMediaRecorder
-import com.example.fluentread.service.screenRecord.ScreenRecordActivity
-import com.example.fluentread.service.screenRecord.ScreenRecorder
-import com.example.fluentread.service.screenRecord.models.ScreenRecordConfig
+import com.example.fluentread.service.media.audio.AudioRecordActivity
+import com.example.fluentread.service.media.audio.models.AudioConfig
+import com.example.fluentread.service.media.audio.record.AudioMediaRecorder
+import com.example.fluentread.service.media.screenRecord.ScreenRecordActivity
+import com.example.fluentread.service.media.screenRecord.ScreenRecorder
+import com.example.fluentread.service.media.screenRecord.models.ScreenRecordConfig
 
 
 /** Launch the app controller as a foreground service */

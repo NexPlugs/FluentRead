@@ -2,12 +2,11 @@ package com.example.fluentread.features.audio
 
 import android.content.Context
 import android.util.Log
-import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fluentread.service.audio.models.AudioConfig
 import com.example.fluentread.service.audio.record.AudioMediaRecorder
-import com.example.fluentread.service.screenRecord.ScreenRecorder
+import com.example.fluentread.service.media.screenRecord.ScreenRecorder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow

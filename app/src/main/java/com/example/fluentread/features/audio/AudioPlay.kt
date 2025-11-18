@@ -18,10 +18,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.fluentread.features.components.BuildButton
-import com.example.fluentread.service.audio.compose.AudioRecordCircleCompose
-import com.example.fluentread.service.audio.models.AudioConfig
-import com.example.fluentread.service.screenRecord.models.ScreenRecordConfig
-import com.example.fluentread.utils.launchAudiRecord
+import com.example.fluentread.service.media.audio.compose.AudioRecordCircleCompose
+import com.example.fluentread.service.media.screenRecord.models.ScreenRecordConfig
 import com.example.fluentread.utils.launchScreenRecorder
 
 @Composable
