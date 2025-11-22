@@ -10,11 +10,11 @@ import android.os.IBinder
 import android.provider.Settings
 import android.util.Log
 import androidx.compose.ui.platform.ComposeView
-import com.example.fluentread.service.audio.compose.AudioRecordCompose
-import com.example.fluentread.service.audio.compose.AudioViewModel
-import com.example.fluentread.service.audio.models.AudioConfig
-import com.example.fluentread.service.audio.models.RecordResult
-import com.example.fluentread.service.audio.record.AudioMediaRecorder
+import com.example.fluentread.service.media.audio.compose.AudioRecordCompose
+import com.example.fluentread.service.media.audio.compose.AudioViewModel
+import com.example.fluentread.service.media.audio.models.AudioConfig
+import com.example.fluentread.service.media.audio.models.RecordResult
+import com.example.fluentread.service.media.audio.record.AudioMediaRecorder
 import com.example.fluentread.service.notification.NotificationHelper
 import com.example.fluentread.service.overlay.ToggleView
 import com.example.fluentread.utils.parcelable

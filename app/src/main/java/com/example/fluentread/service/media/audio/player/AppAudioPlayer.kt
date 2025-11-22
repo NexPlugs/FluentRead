@@ -1,8 +1,8 @@
 package com.example.fluentread.service.media.audio.player
 
 import android.util.Log
-import com.example.fluentread.service.audio.models.AudioState
-import com.example.fluentread.service.audio.models.ProgressInfo
+import com.example.fluentread.service.media.audio.models.AudioState
+import com.example.fluentread.service.media.audio.models.ProgressInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

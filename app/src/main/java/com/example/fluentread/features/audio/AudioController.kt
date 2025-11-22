@@ -4,8 +4,8 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.fluentread.service.audio.models.AudioConfig
-import com.example.fluentread.service.audio.record.AudioMediaRecorder
+import com.example.fluentread.service.media.audio.models.AudioConfig
+import com.example.fluentread.service.media.audio.record.AudioMediaRecorder
 import com.example.fluentread.service.media.screenRecord.ScreenRecorder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext

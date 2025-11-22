@@ -20,6 +20,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.fluentread.features.components.BuildButton
 import com.example.fluentread.service.media.audio.compose.AudioRecordCircleCompose
 import com.example.fluentread.service.media.screenRecord.models.ScreenRecordConfig
+import com.example.fluentread.utils.launchAppOpsWatcherService
 import com.example.fluentread.utils.launchScreenRecorder
 
 @Composable
@@ -152,6 +153,20 @@ fun AudioPlayScreen(
             Text(
                 modifier = Modifier.fillMaxWidth(),
                 text = "Stop Screen Record", textAlign = TextAlign.Center
+            )
+        }
+
+        BuildButton(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp, vertical = 16.dp)
+                .align(Alignment.CenterHorizontally),
+            color = MaterialTheme.colorScheme.primary,
+            onPress = { context.launchAppOpsWatcherService() }
+        ) {
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                text = "Test AppOpsWatcherService", textAlign = TextAlign.Center
             )
         }
     }

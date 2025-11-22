@@ -1,7 +1,7 @@
 package com.example.fluentread.service.media.audio.player
 
-import com.example.fluentread.service.audio.models.AudioState
-import com.example.fluentread.service.audio.models.ProgressInfo
+import com.example.fluentread.service.media.audio.models.AudioState
+import com.example.fluentread.service.media.audio.models.ProgressInfo
 
 /**
  * Interface defining the contract for an audio player.
