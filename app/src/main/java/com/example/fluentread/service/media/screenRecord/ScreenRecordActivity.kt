@@ -195,5 +195,4 @@ class ScreenRecordActivity: AppCompatActivity() {
             unbindService(localServiceConnection)
         }
     }
-
 }

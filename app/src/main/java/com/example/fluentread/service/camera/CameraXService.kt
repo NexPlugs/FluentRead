@@ -30,7 +30,7 @@ object CameraXService : LifecycleOwner {
     //endregion
 
     //region === Coroutine & Events ===
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private val _events = MutableSharedFlow<CameraServiceListener>()
     val events: SharedFlow<CameraServiceListener> = _events.asSharedFlow()
