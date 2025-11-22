@@ -6,6 +6,7 @@ import android.os.Build.VERSION.SDK_INT
 import android.os.Parcelable
 import androidx.core.content.ContextCompat
 import com.example.fluentread.service.AppController
+import com.example.fluentread.service.androidOS.AppOpsWatcherService
 import com.example.fluentread.service.media.audio.AudioRecordActivity
 import com.example.fluentread.service.media.audio.models.AudioConfig
 import com.example.fluentread.service.media.audio.record.AudioMediaRecorder
@@ -39,6 +40,11 @@ fun Context.launchAudiRecord(audioConfig: AudioConfig) {
         this.putExtra(AudioMediaRecorder.AUDIO_CONFIG, audioConfig)
     }
     startActivity(startIntent)
+}
+
+fun Context.launchAppOpsWatcherService() {
+    val intent = Intent(this, AppOpsWatcherService::class.java)
+    ContextCompat.startForegroundService(this, intent)
 }
 
 inline fun <reified T : Parcelable> Intent.parcelable(key: String): T? = when {

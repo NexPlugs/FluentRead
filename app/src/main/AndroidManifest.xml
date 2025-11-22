@@ -32,6 +32,10 @@
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>
 
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+
     <!-- For Audio -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
 
@@ -99,6 +103,12 @@
             android:enabled="true"
             android:foregroundServiceType="specialUse"
             android:exported="false"/>
+
+        <service android:name=".service.androidOS.AppOpsWatcherService"
+            android:enabled="true"
+            android:exported="false"
+            android:permission="android.permission.FOREGROUND_SERVICE"
+            android:foregroundServiceType="camera|microphone" />
 
 
         <meta-data
