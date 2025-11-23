@@ -31,9 +31,12 @@ class CameraAwesomeService {
         zoom: Double,
         frontCamera: Boolean,
         flashMode: Int,
-        captureMode: Int
+        captureMode: String
     ) {
-        // TODO: Implement camera setup logic
+        cameraProvider = getCameraXProvider()
+        cameraProvider ?: return
+
+        val mode = CaptureModes.valueOf(captureMode)
     }
 
     private fun configureCameraSettings() {

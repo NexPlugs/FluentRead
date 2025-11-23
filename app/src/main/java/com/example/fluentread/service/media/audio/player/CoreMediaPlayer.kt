@@ -168,17 +168,18 @@ interface CoreMediaPlayer {
     /**
      * Sets a listener for error events during playback.
      */
-    fun setOnErrorListener(listener: (Int, Int) -> Boolean): Unit
+    fun setOnErrorListener(listener: (Int, Int) -> Boolean)
 
     /**
      * Sets a listener for completion events during playback.
      */
-    fun setOnCompletionListener(listener: () -> Unit): Unit
+    fun setOnCompletionListener(listener: () -> Unit)
 
     /**
      * Sets a listener for prepared events during playback.
      */
-    fun setOnPreparedListener(listener: () -> Unit): Unit
+    fun setOnPreparedListener(listener: () -> Unit)
+
 }
 
 
@@ -268,6 +269,7 @@ class CoreMediaPlayerImpl(
     private var onErrorListener: ((what: Int, extra: Int) -> Boolean)? = null
     private var onCompletionListener: (() -> Unit)? = null
     private var onPreparedListener: (() -> Unit)? = null
+    private var onPollAmplitudeListener: ((amplitude: Float) -> Unit)? = null
 
 
     @Throws(
@@ -356,7 +358,6 @@ class CoreMediaPlayerImpl(
     override fun setOnPreparedListener(listener: () -> Unit) {
         this.onPreparedListener = listener
     }
-
     // --- Private Helpers ---
     /**
      * Sets up the MediaPlayer listeners for error, prepared, and completion events.

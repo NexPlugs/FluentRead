@@ -38,6 +38,8 @@ class AppAudioPlayer(
     private val seek = mutableMapOf<Int, Int>()
     private val registeredTracks = mutableMapOf<Int, TrackInfo>()
 
+    private var onPollAmplitudeListener: ((Float) -> Unit)? = null
+
     private var currentSpeed: Float = DEFAULT_SPEED
         get() = speed ?: audioSpeed ?: DEFAULT_SPEED
         set(value)  {
@@ -310,5 +312,10 @@ class AppAudioPlayer(
         playerState = AudioState.COMPLETED
         notifyStateChange(hashTrack, playerState)
         seek[hashTrack] = 0
+    }
+
+
+    fun setOnPollAmplitudeListener(listener: (Float) -> Unit) {
+        this.onPollAmplitudeListener = listener
     }
 }

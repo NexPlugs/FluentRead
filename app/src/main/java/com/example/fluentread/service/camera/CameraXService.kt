@@ -77,6 +77,7 @@ object CameraXService : LifecycleOwner {
                 },
                 ContextCompat.getMainExecutor(context)
             )
+
         }.onFailure {
             Log.e(TAG, "Failed to start CameraX: ${it.message}", it)
             post(CameraServiceListener.OnCameraError(it.message ?: "Unknown error"))
