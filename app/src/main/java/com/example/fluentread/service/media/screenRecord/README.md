@@ -83,3 +83,17 @@ PREPARED -> (release / error) -> IDLE
 - Inspect saved file metadata (resolution, bitrate, duration) to confirm `MediaRecorder` configuration.
 - Handle orientation changes gracefully—`MediaProjection` callbacks notify about size and visibility changes.
 
+
+## Activity and Service communicate
+
+```
+Activity
+ ├─ startService(intent)
+ │    └─ onStartCommand()   ← nhận config ban đầu
+ │
+ ├─ bindService(...)
+ │    └─ onBind()
+ │         └─ LocalBinder → get Service instance
+ │
+ └─ call service.startRecording(), stopRecording(), observeState()
+```
